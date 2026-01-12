@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClickUp Task Bot</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+        }
+        .header {
+            background: linear-gradient(135deg, #7b2cbf, #9d4edd);
+            padding: 24px;
+            text-align: center;
+            position: relative;
+        }
+        .header h1 { color: white; font-size: 1.5rem; }
+        .header p { color: rgba(255,255,255,0.8); font-size: 0.9rem; margin-top: 4px; }
+        .team-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-top: 8px;
+            color: white;
+        }
+        .clear-btn {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+        .clear-btn:hover { background: rgba(255,255,255,0.3); }
+        .refresh-btn {
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+        .refresh-btn:hover { background: rgba(255,255,255,0.3); }
+        .messages {
+            height: 450px;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .message {
+            max-width: 90%;
+            padding: 14px 18px;
+            border-radius: 16px;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .bot { background: rgba(123,44,191,0.3); color: white; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .user { background: rgba(0,217,255,0.2); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .error { background: rgba(214,48,49,0.4) !important; border: 1px solid rgba(214,48,49,0.5); }
+        .success { background: rgba(0,184,148,0.4) !important; border: 1px solid rgba(0,184,148,0.5); }
+        .input-area {
+            padding: 20px;
+            background: rgba(0,0,0,0.2);
+            display: flex;
+            gap: 12px;
+        }
+        .input-area input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 1rem;
+            outline: none;
+        }
+        .input-area input:focus { border-color: #9d4edd; }
+        .input-area input::placeholder { color: rgba(255,255,255,0.5); }
+        .input-area button {
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #7b2cbf, #9d4edd);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .input-area button:hover { box-shadow: 0 5px 20px rgba(157,78,221,0.4); }
+        .input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .summary-box {
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .summary-box p {
+            margin: 8px 0;
+            font-size: 0.95rem;
+        }
+        .summary-box strong { color: #00d9ff; }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .action-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        .btn-submit {
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            color: white;
+        }
+        .btn-submit:hover { box-shadow: 0 5px 20px rgba(0,184,148,0.4); transform: translateY(-2px); }
+        .btn-edit {
+            background: linear-gradient(135deg, #fdcb6e, #e17055);
+            color: white;
+        }
+        .btn-edit:hover { box-shadow: 0 5px 20px rgba(225,112,85,0.4); transform: translateY(-2px); }
+        .btn-cancel {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .btn-cancel:hover { background: rgba(255,255,255,0.2); }
+        
+        /* Option buttons for selecting from ClickUp data */
+        .option-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .option-btn {
+            padding: 10px 16px;
+            background: linear-gradient(135deg, rgba(123,44,191,0.4), rgba(157,78,221,0.4));
+            border: 1px solid rgba(157,78,221,0.5);
+            color: white;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .option-btn:hover {
+            background: linear-gradient(135deg, rgba(123,44,191,0.7), rgba(157,78,221,0.7));
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(157,78,221,0.3);
+        }
+        .option-btn.space { 
+            background: linear-gradient(135deg, rgba(0,184,148,0.4), rgba(0,206,201,0.4));
+            border-color: rgba(0,184,148,0.5);
+        }
+        .option-btn.space:hover { 
+            background: linear-gradient(135deg, rgba(0,184,148,0.7), rgba(0,206,201,0.7));
+            box-shadow: 0 5px 15px rgba(0,184,148,0.3);
+        }
+        .option-btn.project { 
+            background: linear-gradient(135deg, rgba(253,203,110,0.4), rgba(225,112,85,0.4));
+            border-color: rgba(253,203,110,0.5);
+        }
+        .option-btn.project:hover { 
+            background: linear-gradient(135deg, rgba(253,203,110,0.7), rgba(225,112,85,0.7));
+            box-shadow: 0 5px 15px rgba(253,203,110,0.3);
+        }
+        .option-btn.member { 
+            background: linear-gradient(135deg, rgba(116,185,255,0.4), rgba(9,132,227,0.4));
+            border-color: rgba(116,185,255,0.5);
+        }
+        .option-btn.member:hover { 
+            background: linear-gradient(135deg, rgba(116,185,255,0.7), rgba(9,132,227,0.7));
+            box-shadow: 0 5px 15px rgba(116,185,255,0.3);
+        }
+        .option-btn.skip {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.2);
+        }
+        .option-btn.skip:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .edit-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .edit-field-btn {
+            padding: 8px 14px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .edit-field-btn:hover { background: rgba(157,78,221,0.3); border-color: #9d4edd; }
+        .typing { display: flex; gap: 4px; padding: 10px; }
+        .typing span {
+            width: 8px; height: 8px;
+            background: rgba(255,255,255,0.6);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite;
+        }
+        .typing span:nth-child(1) { animation-delay: -0.32s; }
+        .typing span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        a { color: #00d9ff; }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(26,26,46,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(157,78,221,0.3);
+            border-top-color: #9d4edd;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: white;
+            margin-top: 16px;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container" id="chatContainer">
+        <div class="header">
+            <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+            <h1>🚀 ClickUp Task Bot</h1>
+            <p>Create tasks easily</p>
+            <div class="team-badge" id="teamBadge">Loading...</div>
+            <button class="clear-btn" onclick="clearChat()">🗑️ Clear</button>
+        </div>
+        <div class="messages" id="messages"></div>
+        <div class="input-area">
+            <input type="text" id="input" placeholder="Type your answer..." autofocus>
+            <button id="sendBtn">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // CONFIGURATION - ADD YOUR CLICKUP API TOKEN HERE
+        // ========================================
+        const CLICKUP_API_TOKEN = 'pk_224667406_VEYND0NOKR1SU9IO5IH5FDVBTIERE5EB'; // Your ClickUp API token
+        const N8N_WEBHOOK_URL = 'https://n8n.programmx.com/webhook-test/ClickUpData';
+        
+        // ClickUp API Base URL
+        const CLICKUP_API_BASE = 'https://api.clickup.com/api/v2';
+        
+        // CORS Proxy - Required for browser-based API calls
+        // Options: 
+        // 1. 'https://corsproxy.io/?' (free, public)
+        // 2. 'https://cors-anywhere.herokuapp.com/' (may need activation)
+        // 3. '' (empty = no proxy, use for server-side or if CORS not needed)
+        const CORS_PROXY = 'https://corsproxy.io/?';
+        // ========================================
+
+        const messagesEl = document.getElementById('messages');
+        const input = document.getElementById('input');
+        const sendBtn = document.getElementById('sendBtn');
+        const teamBadge = document.getElementById('teamBadge');
+        const chatContainer = document.getElementById('chatContainer');
+
+        // ClickUp Data Cache
+        let clickupData = {
+            team: null,
+            spaces: [],
+            projects: {}, // space_id -> projects array
+            members: []
+        };
+
+        let currentStep = 0;
+        let taskData = {};
+        let isEditMode = false;
+        let editingField = null;
+        let awaitingConfirmation = false;
+        let awaitingSelection = false;
+        let dataLoaded = false;
+
+        const steps = [
+            { key: 'space_name', label: 'Space', type: 'select' },
+            { key: 'project_name', label: 'Project', type: 'select' },
+            { key: 'task_name', label: 'Task Name', type: 'text', question: "What should be the **Task Name**?" },
+            { key: 'description', label: 'Description', type: 'text', question: "Enter a **Description** (or type 'skip'):", skippable: true },
+            { key: 'start_date', label: 'Start Date', type: 'text', question: "**Start Date**? (YYYY-MM-DD or 'skip')", skippable: true },
+            { key: 'end_date', label: 'End Date', type: 'text', question: "**End/Due Date**? (YYYY-MM-DD or 'skip')", skippable: true },
+            { key: 'assignee', label: 'Assignee', type: 'select' }
+        ];
+
+        function addMessage(content, type = 'bot') {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            if (typeof content === 'string') {
+                div.innerHTML = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+            } else {
+                div.appendChild(content);
+            }
+            messagesEl.appendChild(div);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function showTyping() {
+            const div = document.createElement('div');
+            div.className = 'message bot typing';
+            div.id = 'typing';
+            div.innerHTML = '<span></span><span></span><span></span>';
+            messagesEl.appendChild(div);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function hideTyping() {
+            const typing = document.getElementById('typing');
+            if (typing) typing.remove();
+        }
+
+        function setInput(enabled, placeholder = 'Type your answer...') {
+            input.disabled = !enabled;
+            sendBtn.disabled = !enabled;
+            input.placeholder = placeholder;
+            if (enabled) input.focus();
+        }
+
+        function isValidDate(str) {
+            if (str.toLowerCase() === 'skip') return true;
+            return /^\d{4}-\d{2}-\d{2}$/.test(str);
+        }
+
+        function showLoading(text = 'Loading ClickUp data...') {
+            const overlay = document.createElement('div');
+            overlay.className = 'loading-overlay';
+            overlay.id = 'loadingOverlay';
+            overlay.innerHTML = `
+                <div class="loading-spinner"></div>
+                <div class="loading-text">${text}</div>
+            `;
+            chatContainer.style.position = 'relative';
+            chatContainer.appendChild(overlay);
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.remove();
+        }
+
+        // Helper function to call ClickUp API (with CORS proxy)
+        async function clickupAPI(endpoint) {
+            const url = CORS_PROXY 
+                ? `${CORS_PROXY}${encodeURIComponent(CLICKUP_API_BASE + endpoint)}`
+                : `${CLICKUP_API_BASE}${endpoint}`;
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Authorization': CLICKUP_API_TOKEN,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`API Error ${response.status}: ${errorText || response.statusText}`);
+            }
+            
+            return await response.json();
+        }
+
+        // Fetch ClickUp data directly from ClickUp API
+        async function fetchClickUpData(showErrors = true) {
+            showLoading('Connecting to ClickUp...');
+            
+            try {
+                // Step 1: Get Teams
+                const teamsData = await clickupAPI('/team');
+                const teams = teamsData.teams || [];
+                
+                if (teams.length === 0) {
+                    throw new Error('No teams/workspaces found');
+                }
+                
+                // Use first team or find specific one
+                const team = teams.find(t => t.name.includes('Abdullah')) || teams[0];
+                clickupData.team = { id: team.id, name: team.name };
+                
+                // Extract members from team
+                clickupData.members = team.members.map(m => ({
+                    id: m.user.id,
+                    username: m.user.username,
+                    email: m.user.email
+                }));
+                
+                teamBadge.textContent = `🏢 ${team.name}`;
+                
+                // Step 2: Get Spaces (include all non-archived spaces)
+                const spacesData = await clickupAPI(`/team/${team.id}/space?archived=false`);
+                clickupData.spaces = (spacesData.spaces || []).map(s => ({
+                    id: s.id,
+                    name: s.name
+                }));
+                
+                console.log('Fetched spaces:', clickupData.spaces);
+                
+                // Step 3: Get Lists (Projects) for each Space
+                clickupData.projects = {};
+                
+                for (const space of clickupData.spaces) {
+                    try {
+                        const listsData = await clickupAPI(`/space/${space.id}/list`);
+                        clickupData.projects[space.id] = (listsData.lists || []).map(l => ({
+                            id: l.id,
+                            name: l.name
+                        }));
+                    } catch (e) {
+                        // Try getting folderless lists
+                        clickupData.projects[space.id] = [];
+                    }
+                }
+                
+                // Also get lists from folders
+                for (const space of clickupData.spaces) {
+                    try {
+                        const foldersData = await clickupAPI(`/space/${space.id}/folder`);
+                        for (const folder of (foldersData.folders || [])) {
+                            const folderLists = (folder.lists || []).map(l => ({
+                                id: l.id,
+                                name: `${folder.name} / ${l.name}`
+                            }));
+                            clickupData.projects[space.id] = [
+                                ...clickupData.projects[space.id],
+                                ...folderLists
+                            ];
+                        }
+                    } catch (e) {
+                        // Folders not available
+                    }
+                }
+                
+                dataLoaded = true;
+                hideLoading();
+                
+                // Show success summary
+                const spaceCount = clickupData.spaces.length;
+                const projectCount = Object.values(clickupData.projects).flat().length;
+                const memberCount = clickupData.members.length;
+                
+                addMessage(`✅ **ClickUp Connected!**\n\n📊 **${team.name}**\n• ${spaceCount} Spaces\n• ${projectCount} Projects/Lists\n• ${memberCount} Members\n\n**Select a Space** to create a task:`);
+                showSpaceOptions();
+                return true;
+                
+            } catch (error) {
+                hideLoading();
+                teamBadge.textContent = '📝 Manual Mode';
+                dataLoaded = false;
+                
+                if (showErrors) {
+                    let errorMsg = `❌ **Could not connect to ClickUp**\n\n`;
+                    
+                    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('CORS')) {
+                        errorMsg += `**CORS Error:** Browser blocked the request.\n\n`;
+                        errorMsg += `The CORS proxy may be down. Try:\n`;
+                        errorMsg += `• Refreshing the page\n`;
+                        errorMsg += `• Using Manual Mode below\n\n`;
+                    } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+                        errorMsg += `**Invalid API Token:** Please check your ClickUp API token.\n\n`;
+                    } else {
+                        errorMsg += `**Error:** ${error.message}\n\n`;
+                    }
+                    
+                    errorMsg += `Switching to **Manual Mode**...`;
+                    addMessage(errorMsg, 'bot error');
+                }
+                
+                setTimeout(() => startConversationManual(), 800);
+                return false;
+            }
+        }
+
+        function refreshData() {
+            messagesEl.innerHTML = '';
+            currentStep = 0;
+            taskData = {};
+            isEditMode = false;
+            editingField = null;
+            awaitingConfirmation = false;
+            awaitingSelection = false;
+            
+            addMessage("🔄 **Loading ClickUp data...**");
+            fetchClickUpData(true);
+        }
+
+        function startConversation() {
+            addMessage("👋 Hi! Let's create a ClickUp task.\n\n**Select a Space** to begin:");
+            showSpaceOptions();
+        }
+
+        function startConversationManual() {
+            addMessage("📝 **Manual Mode**\n\nType your **Space** name to begin:");
+            setInput(true, 'Type space name...');
+            currentStep = 0;
+        }
+
+        function showSpaceOptions() {
+            awaitingSelection = true;
+            setInput(false, 'Select from options above...');
+            
+            const container = document.createElement('div');
+            let html = '<div class="option-grid">';
+            
+            if (clickupData.spaces.length > 0) {
+                clickupData.spaces.forEach(space => {
+                    html += `<button class="option-btn space" onclick="selectSpace('${space.id}', '${escapeHtml(space.name)}')">${space.name}</button>`;
+                });
+            } else {
+                html += '<p>No spaces found</p>';
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
+            addMessage(container);
+        }
+
+        function selectSpace(spaceId, spaceName) {
+            awaitingSelection = false;
+            addMessage(spaceName, 'user');
+            taskData.space_name = spaceName;
+            taskData.space_id = spaceId;
+            currentStep = 1;
+            
+            showTyping();
+            setTimeout(() => {
+                hideTyping();
+                showProjectOptions(spaceId);
+            }, 400);
+        }
+
+        function showProjectOptions(spaceId) {
+            addMessage("Great! **Select a Project/List**:");
+            awaitingSelection = true;
+            setInput(false, 'Select from options above...');
+            
+            const container = document.createElement('div');
+            let html = '<div class="option-grid">';
+            
+            const projects = clickupData.projects[spaceId] || [];
+            
+            if (projects.length > 0) {
+                projects.forEach(project => {
+                    html += `<button class="option-btn project" onclick="selectProject('${project.id}', '${escapeHtml(project.name)}')">${project.name}</button>`;
+                });
+            } else {
+                html += '<p>No projects found in this space. Type project name manually.</p>';
+                setInput(true, 'Type project name...');
+                awaitingSelection = false;
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
+            addMessage(container);
+        }
+
+        function selectProject(projectId, projectName) {
+            awaitingSelection = false;
+            addMessage(projectName, 'user');
+            taskData.project_name = projectName;
+            taskData.project_id = projectId;
+            currentStep = 2;
+            
+            showTyping();
+            setTimeout(() => {
+                hideTyping();
+                askTaskName();
+            }, 400);
+        }
+
+        function askTaskName() {
+            addMessage("What should be the **Task Name**?");
+            setInput(true, 'Enter task name...');
+        }
+
+        function showMemberOptions() {
+            addMessage("Who should be **Assigned** to this task?");
+            awaitingSelection = true;
+            setInput(false, 'Select from options above...');
+            
+            const container = document.createElement('div');
+            let html = '<div class="option-grid">';
+            
+            if (clickupData.members.length > 0) {
+                clickupData.members.forEach(member => {
+                    const displayName = member.username || member.email;
+                    html += `<button class="option-btn member" onclick="selectMember('${member.id}', '${escapeHtml(displayName)}')">${displayName}</button>`;
+                });
+            }
+            
+            html += `<button class="option-btn skip" onclick="selectMember(null, 'skip')">⏭️ Skip</button>`;
+            html += '</div>';
+            container.innerHTML = html;
+            addMessage(container);
+        }
+
+        function selectMember(memberId, memberName) {
+            awaitingSelection = false;
+            addMessage(memberName === 'skip' ? 'Skip' : memberName, 'user');
+            
+            if (memberName !== 'skip') {
+                taskData.assignee = memberName;
+                taskData.assignee_id = memberId;
+            } else {
+                taskData.assignee = null;
+            }
+            
+            currentStep = 7;
+            
+            showTyping();
+            setTimeout(() => {
+                hideTyping();
+                showSummary();
+            }, 400);
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+
+        function clearChat() {
+            messagesEl.innerHTML = '';
+            currentStep = 0;
+            taskData = {};
+            isEditMode = false;
+            editingField = null;
+            awaitingConfirmation = false;
+            awaitingSelection = false;
+            setInput(true);
+            
+            if (dataLoaded) {
+                setTimeout(() => startConversation(), 300);
+            } else {
+                setTimeout(() => startConversationManual(), 300);
+            }
+        }
+
+        async function processInput(value) {
+            const trimmed = value.trim();
+            
+            // Ignore if awaiting button selection
+            if (awaitingSelection) return;
+
+            // If editing a specific field
+            if (isEditMode && editingField) {
+                handleEditInput(trimmed);
+                return;
+            }
+
+            const step = steps[currentStep];
+            
+            if (!step) {
+                // Restart conversation
+                currentStep = 0;
+                taskData = {};
+                showTyping();
+                setTimeout(() => {
+                    hideTyping();
+                    if (dataLoaded) {
+                        startConversation();
+                    } else {
+                        startConversationManual();
+                    }
+                }, 400);
+                return;
+            }
+
+            // Validate dates
+            if ((step.key === 'start_date' || step.key === 'end_date') && !isValidDate(trimmed)) {
+                addMessage("❌ Please enter date as **YYYY-MM-DD** or type 'skip'", 'bot error');
+                return;
+            }
+
+            // Store value
+            taskData[step.key] = trimmed.toLowerCase() === 'skip' ? null : trimmed;
+            currentStep++;
+
+            showTyping();
+            setTimeout(() => {
+                hideTyping();
+                askNextQuestion();
+            }, 400);
+        }
+
+        function handleEditInput(trimmed) {
+            const step = steps.find(s => s.key === editingField);
+            
+            // Validate dates
+            if ((editingField === 'start_date' || editingField === 'end_date') && !isValidDate(trimmed)) {
+                addMessage("❌ Please enter date as **YYYY-MM-DD** or type 'skip'", 'bot error');
+                return;
+            }
+            
+            taskData[editingField] = trimmed.toLowerCase() === 'skip' ? null : trimmed;
+            isEditMode = false;
+            editingField = null;
+            
+            addMessage(`✅ **${step.label}** updated to: **${trimmed}**`);
+            setTimeout(() => showSummary(), 500);
+        }
+
+        function askNextQuestion() {
+            if (currentStep >= steps.length) {
+                showSummary();
+                return;
+            }
+
+            const step = steps[currentStep];
+            
+            if (step.type === 'select') {
+                if (step.key === 'space_name' && dataLoaded) {
+                    addMessage("**Select a Space**:");
+                    showSpaceOptions();
+                } else if (step.key === 'project_name' && dataLoaded) {
+                    showProjectOptions(taskData.space_id);
+                } else if (step.key === 'assignee' && dataLoaded) {
+                    showMemberOptions();
+                } else {
+                    // Fallback to text input
+                    addMessage(step.question || `Enter **${step.label}**:`);
+                    setInput(true, `Enter ${step.label}...`);
+                }
+            } else {
+                addMessage(step.question);
+                setInput(true, `Enter ${step.label}...`);
+            }
+        }
+
+        function showSummary() {
+            awaitingConfirmation = true;
+            awaitingSelection = false;
+            setInput(false, 'Use buttons below...');
+
+            const container = document.createElement('div');
+            container.innerHTML = `
+                <p>📋 <strong>Review your task details:</strong></p>
+                <div class="summary-box">
+                    <p><strong>Space:</strong> ${taskData.space_name || 'Not set'}</p>
+                    <p><strong>Project:</strong> ${taskData.project_name || 'Not set'}</p>
+                    <p><strong>Task Name:</strong> ${taskData.task_name || 'Not set'}</p>
+                    <p><strong>Description:</strong> ${taskData.description || 'None'}</p>
+                    <p><strong>Start Date:</strong> ${taskData.start_date || 'None'}</p>
+                    <p><strong>End Date:</strong> ${taskData.end_date || 'None'}</p>
+                    <p><strong>Assignee:</strong> ${taskData.assignee || 'None'}</p>
+                </div>
+                <div class="action-buttons">
+                    <button class="action-btn btn-submit" onclick="confirmSubmit()">✅ Submit</button>
+                    <button class="action-btn btn-edit" onclick="showEditOptions()">✏️ Edit</button>
+                    <button class="action-btn btn-cancel" onclick="cancelTask()">❌ Cancel</button>
+                </div>
+            `;
+            addMessage(container);
+        }
+
+        function showEditOptions() {
+            const container = document.createElement('div');
+            container.innerHTML = `
+                <p>Which field do you want to edit?</p>
+                <div class="edit-options">
+                    ${steps.map(s => `
+                        <button class="edit-field-btn" onclick="editField('${s.key}')">${s.label}</button>
+                    `).join('')}
+                </div>
+                <div style="margin-top: 12px;">
+                    <button class="action-btn btn-cancel" onclick="backToSummary()">← Back</button>
+                </div>
+            `;
+            addMessage(container);
+        }
+
+        function editField(fieldKey) {
+            isEditMode = true;
+            editingField = fieldKey;
+            awaitingConfirmation = false;
+            
+            const step = steps.find(s => s.key === fieldKey);
+            const currentValue = taskData[fieldKey] || 'None';
+            
+            // For select fields, show options
+            if (step.type === 'select' && dataLoaded) {
+                if (fieldKey === 'space_name') {
+                    addMessage(`Current **${step.label}**: ${currentValue}\n\nSelect new value:`);
+                    showSpaceOptionsForEdit();
+                } else if (fieldKey === 'project_name') {
+                    addMessage(`Current **${step.label}**: ${currentValue}\n\nSelect new value:`);
+                    showProjectOptionsForEdit();
+                } else if (fieldKey === 'assignee') {
+                    addMessage(`Current **${step.label}**: ${currentValue}\n\nSelect new value:`);
+                    showMemberOptionsForEdit();
+                }
+            } else {
+                addMessage(`Current **${step.label}**: ${currentValue}\n\nEnter new value:`);
+                setInput(true, `Enter new ${step.label}...`);
+            }
+        }
+
+        function showSpaceOptionsForEdit() {
+            awaitingSelection = true;
+            setInput(false, 'Select from options above...');
+            
+            const container = document.createElement('div');
+            let html = '<div class="option-grid">';
+            
+            clickupData.spaces.forEach(space => {
+                html += `<button class="option-btn space" onclick="selectSpaceEdit('${space.id}', '${escapeHtml(space.name)}')">${space.name}</button>`;
+            });
+            
+            html += `<button class="option-btn skip" onclick="cancelEdit()">← Cancel</button>`;
+            html += '</div>';
+            container.innerHTML = html;
+            addMessage(container);
+        }
+
+        function selectSpaceEdit(spaceId, spaceName) {
+            awaitingSelection = false;
+            isEditMode = false;
+            editingField = null;
+            addMessage(spaceName, 'user');
+            taskData.space_name = spaceName;
+            taskData.space_id = spaceId;
+            // Reset project since space changed
+            taskData.project_name = null;
+            taskData.project_id = null;
+            
+            addMessage(`✅ **Space** updated. Please also select a new **Project**:`);
+            showProjectOptionsForEdit();
+        }
+
+        function showProjectOptionsForEdit() {
+            awaitingSelection = true;
+            setInput(false, 'Select from options above...');
+            
+            const container = document.createElement('div');
+            let html = '<div class="option-grid">';
+            
+            const projects = clickupData.projects[taskData.space_id] || [];
+            
+            if (projects.length > 0) {
+                projects.forEach(project => {
+                    html += `<button class="option-btn project" onclick="selectProjectEdit('${project.id}', '${escapeHtml(project.name)}')">${project.name}</button>`;
+                });
+            } else {
+                html += '<p>No projects in this space</p>';
+            }
+            
+            html += `<button class="option-btn skip" onclick="cancelEdit()">← Cancel</button>`;
+            html += '</div>';
+            container.innerHTML = html;
+            addMessage(container);
+        }
+
+        function selectProjectEdit(projectId, projectName) {
+            awaitingSelection = false;
+            isEditMode = false;
+            editingField = null;
+            addMessage(projectName, 'user');
+            taskData.project_name = projectName;
+            taskData.project_id = projectId;
+            
+            addMessage(`✅ **Project** updated to: **${projectName}**`);
+            setTimeout(() => showSummary(), 500);
+        }
+
+        function showMemberOptionsForEdit() {
+            awaitingSelection = true;
+            setInput(false, 'Select from options above...');
+            
+            const container = document.createElement('div');
+            let html = '<div class="option-grid">';
+            
+            clickupData.members.forEach(member => {
+                const displayName = member.username || member.email;
+                html += `<button class="option-btn member" onclick="selectMemberEdit('${member.id}', '${escapeHtml(displayName)}')">${displayName}</button>`;
+            });
+            
+            html += `<button class="option-btn skip" onclick="selectMemberEdit(null, 'none')">⏭️ No Assignee</button>`;
+            html += `<button class="option-btn skip" onclick="cancelEdit()">← Cancel</button>`;
+            html += '</div>';
+            container.innerHTML = html;
+            addMessage(container);
+        }
+
+        function selectMemberEdit(memberId, memberName) {
+            awaitingSelection = false;
+            isEditMode = false;
+            editingField = null;
+            
+            if (memberName !== 'none') {
+                addMessage(memberName, 'user');
+                taskData.assignee = memberName;
+                taskData.assignee_id = memberId;
+                addMessage(`✅ **Assignee** updated to: **${memberName}**`);
+            } else {
+                addMessage('No Assignee', 'user');
+                taskData.assignee = null;
+                taskData.assignee_id = null;
+                addMessage(`✅ **Assignee** removed`);
+            }
+            
+            setTimeout(() => showSummary(), 500);
+        }
+
+        function cancelEdit() {
+            awaitingSelection = false;
+            isEditMode = false;
+            editingField = null;
+            addMessage("Edit cancelled.");
+            setTimeout(() => showSummary(), 300);
+        }
+
+        function backToSummary() {
+            showSummary();
+        }
+
+        function cancelTask() {
+            awaitingConfirmation = false;
+            awaitingSelection = false;
+            addMessage("❌ Task cancelled.\n\nType anything to start again.", 'bot error');
+            currentStep = 0;
+            taskData = {};
+            setInput(true);
+        }
+
+        async function confirmSubmit() {
+            awaitingConfirmation = false;
+            addMessage("⏳ Creating task in ClickUp...");
+            setInput(false);
+
+            try {
+                // Use CORS proxy for n8n webhook
+                const webhookUrl = CORS_PROXY 
+                    ? `${CORS_PROXY}${encodeURIComponent(N8N_WEBHOOK_URL)}`
+                    : N8N_WEBHOOK_URL;
+                
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(taskData)
+                });
+
+                // Handle response - might be text or JSON
+                const responseText = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (e) {
+                    // If parsing fails, try to extract JSON from the response
+                    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        result = JSON.parse(jsonMatch[0]);
+                    } else {
+                        throw new Error('Invalid response format');
+                    }
+                }
+
+                if (result.success) {
+                    let msg = "✅ **Task Created Successfully!**\n\n";
+                    msg += `<div class="summary-box">`;
+                    msg += `<p><strong>Task:</strong> ${result.task_name || taskData.task_name}</p>`;
+                    msg += `<p><strong>Team:</strong> ${result.team_name || clickupData.team?.name || 'N/A'}</p>`;
+                    msg += `<p><strong>Space:</strong> ${result.space_name || taskData.space_name || 'N/A'}</p>`;
+                    msg += `<p><strong>Project:</strong> ${result.project_name || result.list_name || taskData.project_name || 'N/A'}</p>`;
+                    msg += `<p><strong>Assignee:</strong> ${result.assignee_names || taskData.assignee || 'None'}</p>`;
+                    msg += `<p><strong>Start Date:</strong> ${result.start_date || taskData.start_date || 'None'}</p>`;
+                    msg += `<p><strong>Due Date:</strong> ${result.due_date || taskData.end_date || 'None'}</p>`;
+                    msg += `<p><strong>Status:</strong> ${result.status || 'to do'}</p>`;
+                    msg += `</div>`;
+                    if (result.task_url) {
+                        msg += `<br><a href="${result.task_url}" target="_blank" style="display:inline-block;margin-top:10px;padding:10px 20px;background:linear-gradient(135deg,#7b2cbf,#9d4edd);border-radius:8px;text-decoration:none;color:white;font-weight:bold;">🔗 Open Task in ClickUp</a>`;
+                    }
+                    msg += "<br><br>Type anything to create another task!";
+                    addMessage(msg, 'bot success');
+                } else {
+                    let errorMsg = `❌ **Error:** ${result.error || result.message || 'Failed to create task'}`;
+                    if (result.available) {
+                        errorMsg += `\n\n**Available options:**\n${result.available.join(', ')}`;
+                    }
+                    errorMsg += "\n\nType anything to try again.";
+                    addMessage(errorMsg, 'bot error');
+                }
+                
+                currentStep = 0;
+                taskData = {};
+
+            } catch (error) {
+                // CORS proxy failed, try direct request with no-cors (fire and forget)
+                try {
+                    await fetch(N8N_WEBHOOK_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(taskData)
+                    });
+                    
+                    // Assume success since n8n workflow is executing
+                    let msg = "✅ **Task Request Sent!**\n\n";
+                    msg += `<div class="summary-box">`;
+                    msg += `<p><strong>Task:</strong> ${taskData.task_name}</p>`;
+                    msg += `<p><strong>Team:</strong> ${clickupData.team?.name || 'N/A'}</p>`;
+                    msg += `<p><strong>Space:</strong> ${taskData.space_name}</p>`;
+                    msg += `<p><strong>Project:</strong> ${taskData.project_name}</p>`;
+                    msg += `<p><strong>Assignee:</strong> ${taskData.assignee || 'None'}</p>`;
+                    msg += `<p><strong>Start Date:</strong> ${taskData.start_date || 'None'}</p>`;
+                    msg += `<p><strong>End Date:</strong> ${taskData.end_date || 'None'}</p>`;
+                    msg += `</div>`;
+                    msg += `\n✅ Request sent to n8n workflow.`;
+                    msg += `\n📌 Check your ClickUp for the new task!`;
+                    msg += "\n\nType anything to create another task!";
+                    addMessage(msg, 'bot success');
+                } catch (e) {
+                    addMessage(`❌ **Error:** Could not send request.\n\n${e.message}`, 'bot error');
+                }
+                
+                currentStep = 0;
+                taskData = {};
+            }
+
+            setInput(true);
+        }
+
+        function handleSend() {
+            const value = input.value.trim();
+            if (!value) return;
+            if (awaitingConfirmation || awaitingSelection) return;
+
+            addMessage(value, 'user');
+            input.value = '';
+            processInput(value);
+        }
+
+        sendBtn.addEventListener('click', handleSend);
+        input.addEventListener('keypress', e => { if (e.key === 'Enter') handleSend(); });
+
+        // Start - Fetch ClickUp data on load
+        setTimeout(() => {
+            addMessage("👋 **Welcome to ClickUp Task Bot!**\n\n🔄 Loading your ClickUp data...");
+            fetchClickUpData(true);
+        }, 300);
+    </script>
+</body>
+</html>
