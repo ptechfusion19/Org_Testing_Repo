@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+   
+    body {
+      width: 1024px;
+      height: 1024px;
+      background-color: #0F1419;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+   
+    /* Logo at Top Center */
+    .logo-section {
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      z-index: 10;
+    }
+   
+    .logo {
+      width: 70px;
+      height: 70px;
+    }
+   
+    .company-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0px;
+    }
+   
+    .company-name {
+      color: #FFFFFF;
+      font-size: 32px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      font-family: Arial, sans-serif;
+    }
+   
+    .tagline {
+      color: #FFFFFF;
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 1px;
+    }
+   
+    /* Quick Insight Card - Centered */
+    .insight-card {
+      width: 750px;
+      max-width: 85%;
+      background-color: #1A1A2E;
+      border: 2px solid #00CED1;
+      border-radius: 12px;
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+      margin-top: 120px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+   
+    /* Bright Teal Header Strip */
+    .header-strip {
+      background-color: #00CED1;
+      padding: 20px 50px 20px 30px;
+      width: fit-content;
+      transform: rotate(-5deg);
+      position: relative;
+      left: -50px;
+      top: -30px;
+      z-index: 1;
+      border-radius: 0 12px 12px 0;
+    }
+   
+    .header-text {
+      color: #FFFFFF;
+      font-size: 26px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      text-align: left;
+      line-height: 1.2;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+   
+    /* Body Content - Darker Teal Background */
+    .card-body {
+      padding: 65px 30px 35px 30px;
+      background-color: #1A1A2E;
+    }
+   
+    .body-text {
+      color: #FFFFFF;
+      font-size: 19px;
+      line-height: 1.6;
+      text-align: left;
+      font-weight: 400;
+      font-family: Arial, Helvetica, sans-serif;
+      white-space: pre-line;
+    }
+   
+    .body-text strong {
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+   
+    /* Responsive adjustments */
+    @media (max-width: 1024px) {
+      .insight-card {
+        width: 90%;
+        max-width: 700px;
+      }
+     
+      .header-text {
+        font-size: 22px;
+        letter-spacing: 2px;
+      }
+     
+      .body-text {
+        font-size: 17px;
+      }
+     
+      .card-body {
+        padding: 60px 25px 30px 25px;
+      }
+     
+      .logo-section {
+        top: 40px;
+      }
+     
+      .company-name {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Logo at Top Center -->
+  <div class="logo-section">
+    <img class="logo" src="https://media.licdn.com/dms/image/v2/D4D0BAQFdJWk29TWi5w/company-logo_200_200/company-logo_200_200/0/1732531337286/programm_x_logo?e=1768435200&v=beta&t=6asupSc-rvHpcrqcodceoCMGCBMKkVfcBFCIPuRottc" alt="ProgrammX Logo">
+    <div class="company-info">
+      <div class="company-name">ProgrammX</div>
+      <div class="tagline">Transforming Ideas into Reality</div>
+    </div>
+  </div>
+ 
+  <!-- Quick Insight Card -->
+  <div class="insight-card">
+    <div class="header-strip">
+      <div class="header-text">QUICK INSIGHT</div>
+    </div>
+    <div class="card-body">
+      <div class="body-text">Building mobile applications that incorporate machine learning (ML) features has become increasingly popular. However, integrating ML models that work completely offline poses challenges. Flutter applications, in particular, must handle specific model formats and dependencies, or else risk compatibility issues or offline failures.</div>
+    </div>
+  </div>
+</body>
+</html>
