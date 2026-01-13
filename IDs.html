@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL ID Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .current-id {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .current-id-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .current-id-number {
+            font-size: 48px;
+            font-weight: bold;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+        
+        .btn-prev {
+            background: #ff6b6b;
+        }
+        
+        .btn-prev:hover {
+            background: #ee5a52;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,107,107,0.3);
+        }
+        
+        .btn-next {
+            background: #51cf66;
+        }
+        
+        .btn-next:hover {
+            background: #40c057;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(81,207,102,0.3);
+        }
+        
+        .btn-go {
+            background: #667eea;
+            grid-column: span 2;
+        }
+        
+        .btn-go:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102,126,234,0.3);
+        }
+        
+        .btn-open {
+            background: #4c6ef5;
+            margin-bottom: 10px;
+        }
+        
+        .btn-open:hover {
+            background: #3b5bdb;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76,110,245,0.3);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .url-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 13px;
+            color: #495057;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .range-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .batch-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e9ecef;
+        }
+        
+        .batch-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 URL ID Tester</h1>
+        <p class="subtitle">Test ERP URLs with different ID values</p>
+        
+        <div class="current-id">
+            <div class="current-id-label">Current ID</div>
+            <div class="current-id-number" id="currentIdDisplay">1</div>
+        </div>
+        
+        <div class="input-group">
+            <label for="idInput">Enter ID (1-100):</label>
+            <input type="number" id="idInput" min="1" max="100" value="1">
+        </div>
+        
+        <div class="button-group">
+            <button class="btn-prev" onclick="previousId()">⬅️ Previous</button>
+            <button class="btn-next" onclick="nextId()">Next ➡️</button>
+            <button class="btn-go" onclick="goToId()">Go to ID</button>
+        </div>
+        
+        <button class="btn-open" onclick="openCurrentUrl()">🚀 Open Current URL in New Tab</button>
+        
+        <div class="url-display" id="urlDisplay"></div>
+        
+        <div class="batch-section">
+            <h2>📦 Batch Open</h2>
+            <div class="warning">
+                ⚠️ Warning: Opening many tabs at once may slow down your browser
+            </div>
+            <div class="range-inputs">
+                <div class="input-group">
+                    <label for="startId">Start ID:</label>
+                    <input type="number" id="startId" min="1" max="100" value="1">
+                </div>
+                <div class="input-group">
+                    <label for="endId">End ID:</label>
+                    <input type="number" id="endId" min="1" max="100" value="10">
+                </div>
+            </div>
+            <button class="btn-go" onclick="openBatch()">Open Range in New Tabs</button>
+        </div>
+    </div>
+
+    <script>
+        const baseUrl = 'https://erp.programmx.com/web#id=';
+        const urlParams = '&model=res.users&view_type=form';
+        let currentId = 1;
+
+        function updateDisplay() {
+            document.getElementById('currentIdDisplay').textContent = currentId;
+            document.getElementById('idInput').value = currentId;
+            const fullUrl = baseUrl + currentId + urlParams;
+            document.getElementById('urlDisplay').textContent = fullUrl;
+        }
+
+        function previousId() {
+            if (currentId > 1) {
+                currentId--;
+                updateDisplay();
+            }
+        }
+
+        function nextId() {
+            if (currentId < 100) {
+                currentId++;
+                updateDisplay();
+            }
+        }
+
+        function goToId() {
+            const inputValue = parseInt(document.getElementById('idInput').value);
+            if (inputValue >= 1 && inputValue <= 100) {
+                currentId = inputValue;
+                updateDisplay();
+            } else {
+                alert('Please enter a valid ID between 1 and 100');
+            }
+        }
+
+        function openCurrentUrl() {
+            const fullUrl = baseUrl + currentId + urlParams;
+            window.open(fullUrl, '_blank');
+        }
+
+        function openBatch() {
+            const start = parseInt(document.getElementById('startId').value);
+            const end = parseInt(document.getElementById('endId').value);
+            
+            if (start < 1 || end > 100 || start > end) {
+                alert('Please enter valid range (1-100, start must be less than or equal to end)');
+                return;
+            }
+            
+            const count = end - start + 1;
+            if (count > 20) {
+                if (!confirm(`This will open ${count} tabs. Are you sure?`)) {
+                    return;
+                }
+            }
+            
+            for (let i = start; i <= end; i++) {
+                setTimeout(() => {
+                    const fullUrl = baseUrl + i + urlParams;
+                    window.open(fullUrl, '_blank');
+                }, (i - start) * 500); // Opens one tab every 0.5 seconds
+            }
+        }
+
+        // Allow Enter key to trigger "Go to ID"
+        document.getElementById('idInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                goToId();
+            }
+        });
+
+        // Initialize display
+        updateDisplay();
+    </script>
+</body>
+</html>
