@@ -1,0 +1,979 @@
+{
+  "name": "Stack Overflow Answer Automation",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1632,
+        -144
+      ],
+      "id": "23797e40-91ed-4c3b-a1e0-62d35e9a40ff",
+      "name": "Trigger",
+      "alwaysOutputData": true,
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "url": "https://api.stackexchange.com/2.3/questions",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "order",
+              "value": "desc"
+            },
+            {
+              "name": "sort",
+              "value": "creation"
+            },
+            {
+              "name": "site",
+              "value": "stackoverflow"
+            },
+            {
+              "name": "pagesize",
+              "value": "10"
+            },
+            {
+              "name": "key",
+              "value": "rl_oJs3eYzR5hxMLLNNDVpp8yeRp"
+            },
+            {
+              "name": "tagged",
+              "value": "blockchain;ethereum"
+            },
+            {
+              "name": "filter",
+              "value": "withbody"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1328,
+        96
+      ],
+      "id": "441e97b9-48d0-4341-8117-cd5bf84a0316",
+      "name": "Blockchain Questions Fetching"
+    },
+    {
+      "parameters": {
+        "url": "https://api.stackexchange.com/2.3/questions",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "order",
+              "value": "desc"
+            },
+            {
+              "name": "sort",
+              "value": "creation"
+            },
+            {
+              "name": "site",
+              "value": "stackoverflow"
+            },
+            {
+              "name": "pagesize",
+              "value": "10"
+            },
+            {
+              "name": "key",
+              "value": "rl_oJs3eYzR5hxMLLNNDVpp8yeRp"
+            },
+            {
+              "name": "tagged",
+              "value": " artificial-intelligence;machine-learning"
+            },
+            {
+              "name": "filter",
+              "value": "withbody"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1328,
+        -448
+      ],
+      "id": "da2b26cc-07a5-4f8e-968f-bc2591332820",
+      "name": "AI Questions Fetching"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1088,
+        -176
+      ],
+      "id": "44e1e515-9c20-42c7-aee3-1631a5f0d339",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1264,
+        -848
+      ],
+      "id": "f576f06f-a6a8-4200-b941-37507c5866e6",
+      "name": "Daily Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flatten all questions from both responses\nconst allQuestions = [];\n\nfor (const input of $input.all()) {\n  if (input.json.items && Array.isArray(input.json.items)) {\n    allQuestions.push(...input.json.items);\n  }\n}\n\n// Remove duplicates by question_id (in case same question appears in both)\nconst uniqueQuestions = Array.from(\n  new Map(allQuestions.map(q => [q.question_id, q])).values()\n);\n\nreturn uniqueQuestions.map(q => ({ json: q }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -944,
+        -176
+      ],
+      "id": "0d90dc64-b2ab-480e-9e49-0b6590a1fee2",
+      "name": "Flatten Array"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all questions from the merged output\nconst allQuestions = $input.all().map(item => item.json);\n\n// Remove duplicates based on question_id\nconst uniqueQuestions = Array.from(\n  new Map(allQuestions.map(q => [q.question_id, q])).values()\n);\n\n// Return as n8n items\nreturn uniqueQuestions.map(q => ({ json: q }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        -176
+      ],
+      "id": "879f859f-ed41-4717-8088-47d946cb2bdd",
+      "name": "Remove Duplicates"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all questions from the merged output\nconst allQuestions = $input.all().map(item => item.json);\n\n// Count total questions\nconst totalCount = allQuestions.length;\n\n// Log the count (visible in n8n execution log)\nconsole.log(`Total questions fetched: ${totalCount}`);\n\n// Return only the count as a single output\nreturn [{ json: { total_questions: totalCount } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        -336
+      ],
+      "id": "b84c46a8-ab1a-40fa-ad6b-49efc1102417",
+      "name": "Count Questions"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all filtered questions from the previous node\nconst filteredQuestions = $input.all().map(item => item.json);\n\n// Count filtered questions\nconst filteredCount = filteredQuestions.length;\n\n// Log the count (visible in n8n execution log)\nconsole.log(`Number of filtered questions (low/no answers): ${filteredCount}`);\n\n// Return only the count as a single output\nreturn [{ json: { filtered_questions_count: filteredCount } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        0
+      ],
+      "id": "2aeeb3d3-8557-4532-b2b3-f7a0a108a3ca",
+      "name": "Count Filtered Questions"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all questions from the deduplicated output\nconst allQuestions = $input.all().map(item => item.json);\n\n// Filter questions with no answers or very few answers\n// You can adjust the threshold (currently set to 1 or fewer answers)\nconst threshold = 1; // Change this to 0 for only unanswered, or 2 for 2 or fewer answers\n\nconst filteredQuestions = allQuestions.filter(question => {\n  return question.answer_count <= threshold;\n});\n\n// Log the results\nconsole.log(`Total unique questions: ${allQuestions.length}`);\nconsole.log(`Questions with ${threshold} or fewer answers: ${filteredQuestions.length}`);\n\n// Return filtered questions\nreturn filteredQuestions.map(q => ({ json: q }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        -176
+      ],
+      "id": "388756c0-87e7-45cf-8394-ec94cb07dbd0",
+      "name": "Filter Questions by Threshold"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code node to display questions data in JSON format\n// Place this after your filter node or any node that outputs questions\n\n// Get all questions from the input\nconst questions = $input.all().map(item => item.json);\n\n// Extract only the essential question data fields\nconst questionsData = questions.map(question => ({\n  question_id: question.question_id,\n  title: question.title,\n  link: question.link,\n  tags: question.tags,\n  is_answered: question.is_answered,\n  answer_count: question.answer_count,\n  view_count: question.view_count,\n  score: question.score,\n  creation_date: question.creation_date,\n  last_activity_date: question.last_activity_date,\n  body: question.body\n}));\n\n// Return as n8n items with clean JSON structure\nreturn questionsData.map(q => ({ json: q }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        -176
+      ],
+      "id": "a29f1785-6594-4af1-9e57-b677a1f0c309",
+      "name": "Display Questions"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Code node to display questions data in JSON format\n// Place this after your filter node or any node that outputs questions\n\n// Function to convert HTML to plain text\nfunction htmlToText(html) {\n  if (!html) return '';\n  \n  let text = html;\n  \n  // Decode common HTML entities\n  text = text.replace(/&quot;/g, '\"');\n  text = text.replace(/&#39;/g, \"'\");\n  text = text.replace(/&amp;/g, '&');\n  text = text.replace(/&lt;/g, '<');\n  text = text.replace(/&gt;/g, '>');\n  text = text.replace(/&nbsp;/g, ' ');\n  text = text.replace(/&#x27;/g, \"'\");\n  text = text.replace(/&#x2F;/g, '/');\n  \n  // Decode numeric HTML entities (like &#39;)\n  text = text.replace(/&#(\\d+);/g, (match, dec) => String.fromCharCode(dec));\n  \n  // Decode hex HTML entities (like &#x27;)\n  text = text.replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));\n  \n  // Remove HTML tags\n  text = text.replace(/<[^>]*>/g, '');\n  \n  // Replace multiple whitespace/newlines with single space, then trim\n  text = text.replace(/\\s+/g, ' ').trim();\n  \n  return text;\n}\n\n// Get all questions from the input\nconst questions = $input.all().map(item => item.json);\n\n// Extract only the essential question data fields\nconst questionsData = questions.map(question => ({\n  title: question.title,\n  link: question.link,\n  tags: question.tags,\n  body: htmlToText(question.body) // Convert HTML body to plain text\n}));\n\n// Return as n8n items with clean JSON structure\nreturn questionsData.map(q => ({ json: q }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        -176
+      ],
+      "id": "ccba4e6a-ddaa-4d0c-b6e2-6792284928fa",
+      "name": "Parse Questions"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a senior Blockchain & AI engineer and technical writer.\n\nYou receive StackOverflow questions and must generate a full blog article that SOLVES them.\n\nQuestion title:\n{{$json[\"title\"]}}\n\nQuestion body (plain text):\n{{$json[\"body\"]}}\n\nTags (string or array):\n{{$json[\"tags\"]}}\n\nWrite one AI-generated blog post that:\n- Explains the problem clearly in simple language.\n- Provides a detailed, step-by-step solution.\n- Includes at least TWO code snippets where helpful in python and javascript\n- Follows this fixed template:\n  1. Introduction (what the problem is and why it matters)\n  2. Problem Breakdown\n  3. Step-by-Step Solution\n  4. Code Examples in python and javascript\n  5. Common Pitfalls / Gotchas\n  6. Conclusion and Next Steps\n\nReturn the result as plain markdown text with proper headings and paragraphs. Use standard markdown formatting:\n- Use # for main title\n- Use ## for section headings\n- Use ### for subsections if needed\n- Use code blocks with language identifiers for code snippets\n- Use regular paragraphs for text content\n- Do not escape any characters or use JSON formatting\n- Output should be clean, readable markdown that can be directly used\n\nFormat your response as follows:\n\n# [Blog Post Title]\n\n## 1. Introduction\n\n[Introduction paragraph explaining what the problem is and why it matters]\n\n## 2. Problem Breakdown\n\n[Detailed breakdown of the problem]\n\n## 3. Step-by-Step Solution\n\n[Step-by-step solution with clear instructions]\n\n## 4. Code Examples in python and javascript\n\n[At least two code examples with proper code blocks]\n\n## 5. Common Pitfalls / Gotchas\n\n[Common issues and how to avoid them]\n\n## 6. Conclusion and Next Steps\n\n[Conclusion and recommendations for next steps]",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -80,
+        -176
+      ],
+      "id": "c7478c97-a8e1-4c11-9def-020af9c2eb97",
+      "name": "Content Generator"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "maxTokens": 2000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -80,
+        32
+      ],
+      "id": "07241a76-fbcc-441f-bbcc-97351dd09702",
+      "name": "GPT 4.1 mini",
+      "credentials": {
+        "openAiApi": {
+          "id": "H5LXr3raFFEHNnlb",
+          "name": "OpenAi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: items with LLM response containing blog post markdown\n// Output: one item per input with parsed blog post content\n\nconst items = $input.all();\nconst output = [];\nlet successCount = 0;\nlet failCount = 0;\n\n// Helper: Clean text and handle escape sequences\nfunction cleanText(text) {\n  if (!text) return '';\n  return text\n    .replace(/\\\\n/g, '\\n')\n    .replace(/\\\\r/g, '\\r')\n    .replace(/\\\\t/g, '\\t')\n    .replace(/\\\\\"/g, '\"')\n    .replace(/\\\\\\\\/g, '\\\\')\n    .replace(/&#39;/g, \"'\")\n    .replace(/&quot;/g, '\"')\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>');\n}\n\n// Helper: Detect if content is a blog post (starts with markdown heading)\nfunction isBlogPost(text) {\n  if (!text) return false;\n  const trimmed = text.trim();\n  // Check for markdown heading at start\n  return trimmed.startsWith('#') || \n         /^#{1,6}\\s+.+/m.test(trimmed) ||\n         trimmed.includes('## 1. Introduction') ||\n         trimmed.includes('## Introduction');\n}\n\n// Helper: Extract title from markdown content\nfunction extractTitle(content) {\n  if (!content) return '';\n  \n  // Look for first H1 heading\n  const h1Match = content.match(/^#\\s+(.+)$/m);\n  if (h1Match) {\n    return h1Match[1].trim();\n  }\n  \n  // Fallback: look for any heading\n  const headingMatch = content.match(/^#{1,6}\\s+(.+)$/m);\n  if (headingMatch) {\n    return headingMatch[1].trim();\n  }\n  \n  return '';\n}\n\n// Helper: Try to extract JSON if present\nfunction tryExtractJSON(str) {\n  try {\n    // Remove markdown code fences\n    let cleaned = str.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/i, '').trim();\n    \n    // Find JSON object boundaries\n    const firstBrace = cleaned.indexOf('{');\n    const lastBrace = cleaned.lastIndexOf('}');\n    \n    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {\n      const jsonStr = cleaned.substring(firstBrace, lastBrace + 1);\n      return JSON.parse(jsonStr);\n    }\n  } catch (e) {\n    // Not valid JSON, return null\n  }\n  return null;\n}\n\n// Process each item\nfor (let postIndex = 0; postIndex < items.length; postIndex++) {\n  const item = items[postIndex];\n  \n  // Get raw LLM output from various possible locations\n  let rawContent = item.json?.text ?? \n                   item.json?.response ?? \n                   item.json?.content ?? \n                   item.json?.output ??\n                   item.json?.message ??\n                   item.json;\n  \n  // Convert to string if needed\n  let contentStr = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);\n  \n  // Clean the content\n  contentStr = cleanText(contentStr);\n  \n  let blog_post_content = '';\n  let blog_post_title = '';\n  let parsed = null;\n  let parseError = null;\n  let parse_ok = false;\n  \n  // Strategy 1: Check if it's wrapped in JSON\n  parsed = tryExtractJSON(contentStr);\n  \n  if (parsed && parsed.text) {\n    // LLM returned JSON with text field\n    blog_post_content = cleanText(parsed.text);\n    blog_post_title = extractTitle(blog_post_content);\n    parse_ok = true;\n    successCount++;\n  } else if (isBlogPost(contentStr)) {\n    // LLM returned raw markdown blog post (most common case based on your data)\n    blog_post_content = contentStr;\n    blog_post_title = extractTitle(blog_post_content);\n    parse_ok = true;\n    successCount++;\n  } else {\n    // Content doesn't look like a blog post - might be partial/error\n    parseError = \"Content does not appear to be a complete blog post\";\n    \n    // Still try to salvage what we can\n    blog_post_content = contentStr;\n    blog_post_title = extractTitle(contentStr);\n    \n    failCount++;\n  }\n  \n  // Additional validation: check if content is substantial\n  const wordCount = blog_post_content.split(/\\s+/).length;\n  const hasIntroSection = blog_post_content.includes('## 1. Introduction') || \n                          blog_post_content.includes('## Introduction');\n  \n  if (parse_ok && wordCount < 100) {\n    parseError = `Content too short (${wordCount} words) - likely incomplete`;\n    parse_ok = false;\n  }\n  \n  if (parse_ok && !hasIntroSection && wordCount > 50) {\n    // Warn but don't fail if there's substantial content\n    parseError = \"Warning: No introduction section found, but content appears substantial\";\n  }\n  \n  // Create output item\n  output.push({\n    json: {\n      post_number: postIndex + 1,\n      parse_ok: parse_ok,\n      parse_error: parseError,\n      blog_post_title: blog_post_title,\n      blog_post_content: blog_post_content,\n      word_count: wordCount,\n      has_introduction: hasIntroSection,\n      content_preview: blog_post_content.substring(0, 200) + '...',\n      raw_length: contentStr.length,\n    },\n  });\n}\n\n// Log summary\nconsole.log(`Parse Summary: ${successCount} succeeded, ${failCount} failed out of ${items.length} total`);\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -176
+      ],
+      "id": "2309a877-8f0b-44c3-9fe7-50b3ebb057da",
+      "name": "Parse Content"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => ({\n  json: {\n    post_number: item.json.post_number,\n    title: item.json.blog_post_title,\n    content: item.json.blog_post_content\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        -176
+      ],
+      "id": "148b750b-7b62-471a-954c-9e9dfbc67c84",
+      "name": "Fetch Post Content"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const content = item.json.content;\n  \n  // Extract sections\n  const getSectionAfter = (pattern) => {\n    const regex = new RegExp(`${pattern}([\\\\s\\\\S]*?)(?=##\\\\s+\\\\d+\\\\.|$)`, 'i');\n    const match = content.match(regex);\n    return match ? match[1].trim() : '';\n  };\n  \n  return {\n    json: {\n      post_number: item.json.post_number,\n      title: item.json.title,\n      //content: content, // Full blog post content\n      post_content: getSectionAfter('##\\\\s*1\\\\.\\\\s*Introduction'),\n      solution_steps: getSectionAfter('##\\\\s*3\\\\.\\\\s*Step-by-Step Solution'),\n      code_snippets: getSectionAfter('##\\\\s*4\\\\.\\\\s*Code Examples'),\n      security_pitfalls: getSectionAfter('##\\\\s*5\\\\.\\\\s*Common Pitfalls')\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        -176
+      ],
+      "id": "c2fe1594-d351-4543-9cd4-e63cbf3c2ebd",
+      "name": "Extract Content Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code Node - Enhanced cleaning of markdown and special characters from post_content, solution_steps, and security_pitfalls\n\n// Function to clean a string by stripping markdown and special chars\nfunction cleanText(text) {\n    if (typeof text !== 'string') return text;\n    \n    let cleaned = text;\n    \n    // Remove bold: **text**\n    cleaned = cleaned.replace(/\\*\\*(.*?)\\*\\*/g, '$1');\n    \n    // Remove italic: *text*\n    cleaned = cleaned.replace(/\\*(.*?)\\*/g, '$1');\n    \n    // Remove headings: # Heading\n    cleaned = cleaned.replace(/^#+\\s*/gm, '');\n    \n    // Remove bullets: - item or * item\n    cleaned = cleaned.replace(/^\\s*[-*]\\s+/gm, '');\n    \n    // Remove quotes: > quote\n    cleaned = cleaned.replace(/^\\s*>\\s*/gm, '');\n    \n    // Remove inline code: `code`\n    cleaned = cleaned.replace(/`(.*?)`/g, '$1');\n    \n    // Remove horizontal lines: --- or ***\n    cleaned = cleaned.replace(/^\\s*---\\s*$/gm, '');\n    cleaned = cleaned.replace(/^\\s*\\*\\*\\*\\s*$/gm, '');\n    \n    // Remove backslashes: \\ or \\\\\n    cleaned = cleaned.replace(/\\\\\\\\/g, '');\n    cleaned = cleaned.replace(/\\\\/g, '');\n    \n    // Remove other specials like / or [\n    cleaned = cleaned.replace(/\\//g, '');\n    cleaned = cleaned.replace(/\\[/g, '');\n    cleaned = cleaned.replace(/\\]/g, '');\n    \n    // Normalize line endings and collapse newlines to single space\n    cleaned = cleaned.replace(/\\r\\n/g, '\\n');\n    cleaned = cleaned.replace(/\\r/g, '\\n');\n    cleaned = cleaned.replace(/\\n+/g, ' ');\n    \n    // Collapse multiple spaces to single\n    cleaned = cleaned.replace(/\\s+/g, ' ');\n    \n    // Trim whitespace\n    return cleaned.trim();\n}\n\n// Process each item in the input\nreturn items.map(item => {\n    const json = item.json;\n\n    // Clean the three target fields if they exist\n    if (json.post_content) {\n        json.post_content = cleanText(json.post_content);\n    }\n    \n    if (json.solution_steps) {\n        json.solution_steps = cleanText(json.solution_steps);\n    }\n    \n    if (json.security_pitfalls) {\n        json.security_pitfalls = cleanText(json.security_pitfalls);\n    }\n\n    return {\n        json: json,\n        // Preserve pairedItem if needed (important for n8n routing)\n        pairedItem: item.pairedItem,\n    };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        48
+      ],
+      "id": "762a5978-cd79-4376-a64d-d9cd6dc56215",
+      "name": "Clean Post Content"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code Node - Clean code_snippets by extracting and dedenting code blocks with language\n\n// Simple dedent function\nfunction dedent(code) {\n    const lines = code.split('\\n').filter(line => line.trim() !== '');\n    if (lines.length === 0) return code.trim();\n    \n    const minIndent = Math.min(...lines.map(line => line.match(/^\\s*/)[0].length));\n    return code.split('\\n').map(line => line.slice(minIndent)).join('\\n').trim();\n}\n\n// Function to clean code_snippets: extract blocks with language\nfunction cleanCodeSnippets(text) {\n    if (typeof text !== 'string') return text;\n    \n    const pattern = /```(\\w+)?\\n([\\s\\S]*?)```/g;\n    let match;\n    const blocks = [];\n    \n    while ((match = pattern.exec(text)) !== null) {\n        const lang = match[1] || ''; // Language or empty\n        const code = dedent(match[2]);\n        const block = lang ? `${lang}\\n${code}` : code;\n        blocks.push(block);\n    }\n    \n    // Join with separator\n    return blocks.join('\\n\\n---\\n\\n');\n}\n\n// Process each item in the input\nreturn items.map(item => {\n    const json = item.json;\n\n    // Clean only the code_snippets field if it exists\n    if (json.code_snippets) {\n        json.code_snippets = cleanCodeSnippets(json.code_snippets);\n    }\n\n    return {\n        json: json,\n        // Preserve pairedItem if needed (important for n8n routing)\n        pairedItem: item.pairedItem,\n    };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        48
+      ],
+      "id": "5905464a-4127-4ae6-b69b-f27f359e11be",
+      "name": "Clean Code Snippets"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Code Node: Clean code_snippets section\n * \n * This code cleans code snippets by removing unnecessary characters:\n * - Removes \"in python and javascript\" prefixes\n * - Normalizes markdown separators\n * - Removes extra whitespace\n * - Formats code blocks properly\n * \n * Input: Blog post items with 'code_snippets' field\n * Output: Same items with cleaned 'code_snippets'\n */\n\n// Main cleaning function\nfunction cleanCodeSnippets(codeSnippets) {\n    if (!codeSnippets || typeof codeSnippets !== 'string') {\n        return '';\n    }\n    \n    let text = codeSnippets.trim();\n    \n    // Remove \"in python and javascript\" prefixes at the start\n    text = text.replace(/^in\\s+(python|javascript)\\s+and\\s+(python|javascript)\\s*\\n+/i, '');\n    text = text.replace(/^in\\s+(python|javascript)\\s*\\n+/i, '');\n    \n    // Remove standalone \"in python and javascript\" anywhere\n    text = text.replace(/\\n+in\\s+(python|javascript)\\s+and\\s+(python|javascript)\\s*\\n+/gi, '\\n\\n');\n    \n    // Normalize markdown separators to single \"---\"\n    text = text.replace(/-{3,}/g, '---');\n    \n    // Remove multiple consecutive newlines (more than 2)\n    text = text.replace(/\\n{3,}/g, '\\n\\n');\n    \n    // Process line by line\n    const lines = text.split('\\n');\n    const cleanedLines = [];\n    let prevEmpty = false;\n    let prevWasSeparator = false;\n    \n    for (let i = 0; i < lines.length; i++) {\n        const line = lines[i];\n        const stripped = line.trim();\n        \n        // Skip multiple consecutive empty lines\n        if (!stripped) {\n            if (!prevEmpty && !prevWasSeparator) {\n                cleanedLines.push('');\n                prevEmpty = true;\n            }\n            prevWasSeparator = false;\n            continue;\n        }\n        \n        prevEmpty = false;\n        \n        // Handle separator lines\n        if (stripped === '---' || (stripped.startsWith('---') && stripped.length <= 5)) {\n            if (!prevWasSeparator) {\n                cleanedLines.push('---');\n                prevWasSeparator = true;\n            }\n            continue;\n        }\n        \n        prevWasSeparator = false;\n        \n        // Keep section headers like \"### Python:\" or \"### JavaScript:\"\n        if (/^###\\s+(Python|JavaScript|C#|C\\+\\+|Solidity|Bash|Shell)/i.test(stripped)) {\n            cleanedLines.push(stripped);\n            continue;\n        }\n        \n        // Keep the line as is (preserve indentation for code)\n        cleanedLines.push(line);\n    }\n    \n    // Join lines back\n    let cleaned = cleanedLines.join('\\n');\n    \n    // Remove leading/trailing whitespace\n    cleaned = cleaned.trim();\n    \n    // Ensure proper spacing around code blocks\n    cleaned = cleaned.replace(/([^\\n])\\n```/g, '$1\\n\\n```');\n    cleaned = cleaned.replace(/```\\n([^\\n])/g, '```\\n\\n$1');\n    \n    // Clean up any remaining multiple newlines\n    cleaned = cleaned.replace(/\\n{3,}/g, '\\n\\n');\n    \n    // Remove trailing separators\n    cleaned = cleaned.replace(/\\n+---+?\\s*$/g, '');\n    \n    // Final trim\n    return cleaned.trim();\n}\n\n// n8n execution\nconst items = $input.all();\nconst outputItems = [];\n\nfor (const item of items) {\n    const blogPost = item.json;\n    \n    // Clean code_snippets if it exists\n    if (blogPost.code_snippets) {\n        const original = blogPost.code_snippets;\n        const cleaned = cleanCodeSnippets(original);\n        \n        // Create new item with cleaned code_snippets\n        const cleanedItem = {\n            json: {\n                ...blogPost,\n                code_snippets: cleaned\n            }\n        };\n        \n        outputItems.push(cleanedItem);\n    } else {\n        // If no code_snippets, pass through as is\n        outputItems.push(item);\n    }\n}\n\nreturn outputItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        48
+      ],
+      "id": "8fda619f-4673-462f-8c36-a37d38853ee5",
+      "name": "Clean Code Snippets 2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert at creating image generation prompts that produce realistic, professional presentation slides.\nINPUT DATA:\n\nPost Number: {{$json[\"post_number\"]}}\nBlog Title: {{$json[\"title\"]}}\nBlog Content: {{$json[\"post_content\"]}}\nSolution Steps: {{$json[\"solution_steps\"]}}\n\n\nYOUR TASK:\nStep 1: Extract Text Content\nHEADER TEXT (5-8 words maximum):\n\nTake the most important words from the title\nConvert to ALL CAPS\nExample: \"INTEGRATE ML MODEL IN FLUTTER\"\n\nBODY TEXT (3 bullet points, each 4-6 words):\n\nExtract 3 key action steps from the solution\nExample: \"Use TensorFlow Lite format\"\n\nStep 2: Generate the Prompt\nWrite your prompt in this EXACT format:\nA screenshot of a PowerPoint presentation slide displayed in edit mode. The slide has a professional corporate design with a dark teal background. There is a large text box in the center with a cyan border. The text box contains a header that says [INSERT HEADER TEXT HERE] in large white bold text. Below the header are three lines of white text that read [INSERT BULLET 1], [INSERT BULLET 2], and [INSERT BULLET 3]. The design is clean and minimal like a real business presentation. The text is crystal clear and perfectly readable. Professional quality, sharp typography, modern corporate style, like a screenshot from Microsoft PowerPoint.\n\nCRITICAL RULES:\n\nReplace bracketed text with extracted content\nKeep header under 8 words, bullets under 6 words each\nUse REAL WORDS from the blog post\nOutput ONLY the prompt text - no markdown, no labels\n\n\nEXAMPLE OUTPUT:\nA screenshot of a PowerPoint presentation slide displayed in edit mode. The slide has a professional corporate design with a dark teal background. There is a large text box in the center with a cyan border. The text box contains a header that says FIX UNISWAP TRANSACTION FAILED ERROR in large white bold text. Below the header are three lines of white text that read Check your gas settings, Verify token approval, and Increase slippage tolerance. The design is clean and minimal like a real business presentation. The text is crystal clear and perfectly readable. Professional quality, sharp typography, modern corporate style, like a screenshot from Microsoft PowerPoint.\n\nNOW CREATE THE PROMPT using the blog post data provided.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        896,
+        48
+      ],
+      "id": "263389ec-edb3-447c-893c-6815151bb5b5",
+      "name": "Prompt Generator"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        208
+      ],
+      "id": "4d308e4d-9192-4a8b-8137-bdb849607846",
+      "name": "GPT 4.1 mini1",
+      "credentials": {
+        "openAiApi": {
+          "id": "H5LXr3raFFEHNnlb",
+          "name": "OpenAi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "/**\n * n8n Code Node: Convert Blog Post to HTML\n * \n * Converts blog post JSON data into well-formatted HTML\n * \n * Input: Blog post items with all fields\n * Output: Items with 'html_content' field\n */\n\nfunction convertToHTML(blogPost) {\n    const title = blogPost.title || 'Untitled';\n    const postNumber = blogPost.post_number || '';\n    const postContent = blogPost.post_content || '';\n    const solutionSteps = blogPost.solution_steps || '';\n    const codeSnippets = blogPost.code_snippets || '';\n    const securityPitfalls = blogPost.security_pitfalls || '';\n    \n    let html = '<article class=\"blog-post\">\\n';\n    \n    // Post Number (optional)\n    if (postNumber) {\n        html += `  <div class=\"post-number\">Post #${postNumber}</div>\\n`;\n    }\n    \n    // Title\n    html += `  <h1 class=\"post-title\">${escapeHtml(title)}</h1>\\n\\n`;\n    \n    // Post Content\n    if (postContent) {\n        html += '  <div class=\"post-content\">\\n';\n        const paragraphs = postContent.split(/\\n\\n+/).filter(p => p.trim());\n        paragraphs.forEach(para => {\n            html += `    <p>${formatParagraph(para)}</p>\\n`;\n        });\n        html += '  </div>\\n\\n';\n    }\n    \n    // Solution Steps\n    if (solutionSteps) {\n        html += '  <div class=\"solution-steps\">\\n';\n        html += '    <h2>Solution Steps</h2>\\n';\n        html += formatSolutionSteps(solutionSteps);\n        html += '  </div>\\n\\n';\n    }\n    \n    // Code Snippets\n    if (codeSnippets) {\n        html += '  <div class=\"code-snippets\">\\n';\n        html += '    <h2>Code Examples</h2>\\n';\n        html += formatCodeSnippets(codeSnippets);\n        html += '  </div>\\n\\n';\n    }\n    \n    // Security Pitfalls\n    if (securityPitfalls) {\n        html += '  <div class=\"security-pitfalls\">\\n';\n        html += '    <h2>Common Pitfalls and Gotchas</h2>\\n';\n        html += formatSecurityPitfalls(securityPitfalls);\n        html += '  </div>\\n\\n';\n    }\n    \n    html += '</article>';\n    \n    return html;\n}\n\nfunction escapeHtml(text) {\n    const map = {\n        '&': '&amp;',\n        '<': '&lt;',\n        '>': '&gt;',\n        '\"': '&quot;',\n        \"'\": '&#039;'\n    };\n    return text.replace(/[&<>\"']/g, m => map[m]);\n}\n\nfunction formatParagraph(text) {\n    // Clean up the text\n    let formatted = escapeHtml(text.trim());\n    // Remove code block markers if any\n    formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');\n    return formatted;\n}\n\nfunction formatSolutionSteps(steps) {\n    let html = '    <ol class=\"steps-list\">\\n';\n    \n    // Split by \"Step\" pattern\n    const stepPattern = /Step\\s+\\d+:/gi;\n    const parts = steps.split(stepPattern);\n    const stepMatches = steps.match(stepPattern);\n    \n    if (stepMatches && stepMatches.length > 0) {\n        for (let i = 0; i < stepMatches.length; i++) {\n            const stepTitle = stepMatches[i].trim();\n            const stepContent = parts[i + 1] || '';\n            \n            html += '      <li class=\"step-item\">\\n';\n            html += `        <strong>${escapeHtml(stepTitle)}</strong>\\n`;\n            \n            // Format step content\n            const content = stepContent.trim();\n            if (content) {\n                // Check for sub-items or code blocks\n                if (content.includes('\\n')) {\n                    const lines = content.split('\\n').filter(l => l.trim());\n                    html += '        <div class=\"step-content\">\\n';\n                    lines.forEach(line => {\n                        const trimmed = line.trim();\n                        if (trimmed.startsWith('-') || trimmed.match(/^\\d+\\./)) {\n                            html += `          <p>${formatParagraph(trimmed)}</p>\\n`;\n                        } else {\n                            html += `          <p>${formatParagraph(trimmed)}</p>\\n`;\n                        }\n                    });\n                    html += '        </div>\\n';\n                } else {\n                    html += `        <p>${formatParagraph(content)}</p>\\n`;\n                }\n            }\n            \n            html += '      </li>\\n';\n        }\n    } else {\n        // Fallback: treat as regular text\n        const paragraphs = steps.split(/\\n\\n+/).filter(p => p.trim());\n        paragraphs.forEach(para => {\n            html += `      <li><p>${formatParagraph(para)}</p></li>\\n`;\n        });\n    }\n    \n    html += '    </ol>\\n';\n    return html;\n}\n\nfunction formatCodeSnippets(codeSnippets) {\n    let html = '';\n    \n    // Split by separators (---)\n    const sections = codeSnippets.split(/---+/).filter(s => s.trim());\n    \n    sections.forEach(section => {\n        const trimmed = section.trim();\n        \n        // Check if it starts with a language identifier\n        const langMatch = trimmed.match(/^(\\w+)\\n/);\n        if (langMatch) {\n            const language = langMatch[1];\n            const code = trimmed.substring(language.length).trim();\n            \n            html += '    <div class=\"code-block-wrapper\">\\n';\n            html += `      <div class=\"code-header\">${escapeHtml(language)}</div>\\n`;\n            html += '      <pre><code class=\"language-' + escapeHtml(language.toLowerCase()) + '\">';\n            html += escapeHtml(code);\n            html += '</code></pre>\\n';\n            html += '    </div>\\n\\n';\n        } else {\n            // Check for markdown code blocks\n            const codeBlockMatch = trimmed.match(/```(\\w+)?\\n([\\s\\S]*?)```/);\n            if (codeBlockMatch) {\n                const language = codeBlockMatch[1] || 'text';\n                const code = codeBlockMatch[2];\n                \n                html += '    <div class=\"code-block-wrapper\">\\n';\n                html += `      <div class=\"code-header\">${escapeHtml(language)}</div>\\n`;\n                html += '      <pre><code class=\"language-' + escapeHtml(language.toLowerCase()) + '\">';\n                html += escapeHtml(code);\n                html += '</code></pre>\\n';\n                html += '    </div>\\n\\n';\n            } else {\n                // Plain text code\n                html += '    <div class=\"code-block-wrapper\">\\n';\n                html += '      <pre><code>';\n                html += escapeHtml(trimmed);\n                html += '</code></pre>\\n';\n                html += '    </div>\\n\\n';\n            }\n        }\n    });\n    \n    return html;\n}\n\nfunction formatSecurityPitfalls(pitfalls) {\n    let html = '    <ul class=\"pitfalls-list\">\\n';\n    \n    // Split by common patterns\n    const items = pitfalls.split(/Gotchas|Gotcha|Pitfall|Note:/i);\n    \n    if (items.length > 1) {\n        // Skip first item (usually empty or \"Gotchas\" text)\n        for (let i = 1; i < items.length; i++) {\n            const item = items[i].trim();\n            if (item) {\n                // Check if it has a colon (title: description format)\n                const colonIndex = item.indexOf(':');\n                if (colonIndex > 0 && colonIndex < 50) {\n                    const title = item.substring(0, colonIndex).trim();\n                    const description = item.substring(colonIndex + 1).trim();\n                    \n                    html += '      <li class=\"pitfall-item\">\\n';\n                    html += `        <strong>${escapeHtml(title)}:</strong>\\n`;\n                    html += `        <span>${formatParagraph(description)}</span>\\n`;\n                    html += '      </li>\\n';\n                } else {\n                    html += `      <li>${formatParagraph(item)}</li>\\n`;\n                }\n            }\n        }\n    } else {\n        // Fallback: split by periods or newlines\n        const sentences = pitfalls.split(/\\.\\s+/).filter(s => s.trim());\n        sentences.forEach(sentence => {\n            html += `      <li>${formatParagraph(sentence)}</li>\\n`;\n        });\n    }\n    \n    html += '    </ul>\\n';\n    return html;\n}\n\n// n8n execution - Run Once for Each Item mode\nconst item = $input.item;\nconst blogPost = item.json;\n\n// Convert to HTML\nconst htmlContent = convertToHTML(blogPost);\n\n// Return item with HTML content\nreturn {\n    json: {\n        ...blogPost,\n        html_content: htmlContent\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -176
+      ],
+      "id": "804bedae-06a9-43bb-8435-030cf0613dc4",
+      "name": "Post -> HTML"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Code Node: Convert Blog Posts to HTML Files\n * \n * Mode: Run Once for All Items\n * Language: JavaScript\n * \n * This code converts blog post JSON data into HTML files.\n * Returns binary data that can be saved using n8n's file nodes.\n * \n * IMPORTANT: n8n Code Node runs in a sandbox and cannot access fs/path directly.\n * Use a \"Read/Write Files from Disk\" node after this to save the files.\n */\n\n// Get input data\nconst inputItems = $input.all();\n\n// HTML template with CSS styling (matching your Python script)\nconst HTML_TEMPLATE = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<meta name=\"description\" content=\"{{TITLE}}\">\n<title>{{TITLE}}</title>\n<style>\n/* Blog Post HTML Styles */\n* {\n    box-sizing: border-box;\n}\n\nbody {\n    margin: 0;\n    padding: 0;\n    background: #f5f5f5;\n}\n\n.blog-post {\n    max-width: 900px;\n    margin: 0 auto;\n    padding: 40px 20px;\n    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n    line-height: 1.7;\n    color: #333;\n    background: #fff;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n}\n\n.post-number {\n    font-size: 14px;\n    color: #666;\n    margin-bottom: 10px;\n    font-weight: 500;\n    text-transform: uppercase;\n    letter-spacing: 0.5px;\n}\n\n.post-title {\n    font-size: 36px;\n    font-weight: 700;\n    color: #1a1a1a;\n    margin: 0 0 30px 0;\n    line-height: 1.3;\n}\n\n.post-content {\n    margin-bottom: 40px;\n}\n\n.post-content p {\n    margin-bottom: 20px;\n    font-size: 17px;\n    color: #444;\n}\n\n.post-content code {\n    background: #f5f5f5;\n    padding: 2px 6px;\n    border-radius: 3px;\n    font-size: 15px;\n    font-family: 'Courier New', monospace;\n    color: #d63384;\n}\n\n.solution-steps {\n    margin-bottom: 40px;\n    padding: 30px;\n    background: #f8f9fa;\n    border-radius: 8px;\n    border-left: 4px solid #007bff;\n}\n\n.solution-steps h2 {\n    margin-top: 0;\n    margin-bottom: 20px;\n    color: #007bff;\n}\n\n.solution-steps ol {\n    margin: 0;\n    padding-left: 20px;\n}\n\n.solution-steps li {\n    margin-bottom: 16px;\n}\n\n.code-examples {\n    margin-bottom: 40px;\n}\n\n.code-examples h2 {\n    margin-bottom: 20px;\n    color: #1a1a1a;\n}\n\n.code-block-wrapper {\n    margin-bottom: 24px;\n    border-radius: 6px;\n    overflow: hidden;\n    border: 1px solid #e1e4e8;\n    background: #0d1117;\n    box-shadow: 0 2px 8px rgba(0,0,0,0.1);\n}\n\n.code-header {\n    padding: 8px 12px;\n    font-size: 13px;\n    text-transform: uppercase;\n    letter-spacing: 0.08em;\n    color: #c9d1d9;\n    background: #161b22;\n    font-weight: 600;\n}\n\npre {\n    margin: 0;\n    padding: 14px 16px;\n    overflow-x: auto;\n    background: #0d1117;\n    color: #c9d1d9;\n    font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', 'Courier New', monospace;\n    font-size: 13px;\n    line-height: 1.5;\n}\n\npre code {\n    background: transparent;\n    padding: 0;\n    color: inherit;\n    font-size: inherit;\n}\n\n.security-pitfalls {\n    margin-top: 40px;\n    padding: 24px 20px;\n    border-radius: 8px;\n    background: #fff4e6;\n    border: 1px solid #ffd8a8;\n    border-left: 4px solid #ff9800;\n}\n\n.security-pitfalls h2 {\n    margin-top: 0;\n    margin-bottom: 20px;\n    color: #d9480f;\n}\n\n.security-pitfalls p {\n    margin-bottom: 15px;\n}\n\n@media (max-width: 768px) {\n    .blog-post {\n        padding: 20px 15px;\n    }\n    .post-title {\n        font-size: 28px;\n    }\n    .solution-steps, .security-pitfalls {\n        padding: 20px 15px;\n    }\n}\n</style>\n</head>\n<body>\n{{BODY}}\n</body>\n</html>`;\n\n// Function to sanitize filename\nfunction sanitizeFilename(text) {\n    return text\n        .toLowerCase()\n        .replace(/[^a-z0-9]+/g, '-')\n        .replace(/^-+|-+$/g, '')\n        .substring(0, 50);\n}\n\n// Helper function to escape HTML in title\nfunction escapeHtml(text) {\n    if (!text) return '';\n    return String(text)\n        .replace(/&/g, '&amp;')\n        .replace(/</g, '&lt;')\n        .replace(/>/g, '&gt;')\n        .replace(/\"/g, '&quot;')\n        .replace(/'/g, '&#039;');\n}\n\n// Main processing function\nfunction processBlogPosts() {\n    const results = [];\n    \n    // Process each blog post\n    inputItems.forEach((item, index) => {\n        try {\n            const post = item.json;\n            const postNumber = post.post_number || 'unknown';\n            const title = post.title || 'Untitled Blog Post';\n            const htmlContent = post.html_content || '';\n            \n            // Generate filename\n            const titleSlug = sanitizeFilename(title);\n            const filename = `post-${postNumber}-${titleSlug}.html`;\n            \n            // Create full HTML document (escape title for safety)\n            const escapedTitle = escapeHtml(title);\n            const fullHTML = HTML_TEMPLATE\n                .replace(/{{TITLE}}/g, escapedTitle)\n                .replace('{{BODY}}', htmlContent);\n            \n            // Return JSON data with HTML content and file info\n            // Use \"Read/Write Files from Disk\" node after this to save files\n            results.push({\n                json: {\n                    ...post,\n                    html_filename: filename,\n                    html_file_path: `C:\\\\Users\\\\PC\\\\Desktop\\\\Workflow\\\\${filename}`,\n                    full_html_document: fullHTML,\n                    file_size_bytes: fullHTML.length,\n                    ready_to_save: true\n                }\n            });\n            \n        } catch (error) {\n            results.push({\n                json: {\n                    error: error.message,\n                    error_type: error.constructor.name,\n                    post_number: item.json?.post_number || 'unknown',\n                    ready_to_save: false\n                }\n            });\n        }\n    });\n    \n    return results;\n}\n\n// Execute and return results\ntry {\n    const results = processBlogPosts();\n    return results;\n} catch (error) {\n    return [{\n        json: {\n            error: error.message,\n            error_type: error.constructor.name,\n            error_stack: error.stack\n        }\n    }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        -176
+      ],
+      "id": "4f0f5237-191c-470a-85d5-90d71f63e262",
+      "name": "HTML Wrap"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the data from the previous node\nconst items = $input.all();\n\n// Process each item and create HTML files\nconst outputItems = items.map((item, index) => {\n  const data = item.json;\n  \n  // Extract the HTML content from full_html_document\n  const htmlContent = data.full_html_document;\n  \n  // Create a proper filename from the html_filename\n  const filename = data.html_filename || `post-${data.post_number || index}.html`;\n  \n  // Prepare the binary data for the HTML file\n  const binaryData = {\n    data: Buffer.from(htmlContent, 'utf-8').toString('base64'),\n    mimeType: 'text/html',\n    fileName: filename,\n    fileExtension: 'html'\n  };\n  \n  return {\n    json: {\n      post_number: data.post_number,\n      title: data.title,\n      filename: filename,\n      file_size_bytes: data.file_size_bytes,\n      success: true\n    },\n    binary: {\n      data: binaryData\n    }\n  };\n});\n\nreturn outputItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        -176
+      ],
+      "id": "ebb3cf0b-3272-42cc-a878-affab66d8650",
+      "name": "HTML File"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "\"\"\"\nn8n Code Node: Summarize Blog Post Textual Content\nMode: Run Once for All Items\nLanguage: Python\n\nThis script extracts all textual fields from blog posts (excluding code_snippets)\nand creates concise summaries for each post.\n\nTextual fields included:\n- title\n- post_content\n- solution_steps\n- security_pitfalls\n\nExcluded:\n- code_snippets\n\"\"\"\n\nimport re\n\n\ndef extract_textual_content(blog_post):\n    \"\"\"\n    Extract all textual content from a blog post, excluding code_snippets.\n    \n    Args:\n        blog_post: Dictionary containing blog post data\n        \n    Returns:\n        Combined text string with all textual content\n    \"\"\"\n    textual_parts = []\n    \n    # Extract title\n    title = blog_post.get(\"title\", \"\")\n    if title:\n        textual_parts.append(f\"Title: {title}\")\n    \n    # Extract post content\n    post_content = blog_post.get(\"post_content\", \"\")\n    if post_content:\n        textual_parts.append(f\"\\nContent:\\n{post_content}\")\n    \n    # Extract solution steps\n    solution_steps = blog_post.get(\"solution_steps\", \"\")\n    if solution_steps:\n        textual_parts.append(f\"\\nSolution Steps:\\n{solution_steps}\")\n    \n    # Extract security pitfalls\n    security_pitfalls = blog_post.get(\"security_pitfalls\", \"\")\n    if security_pitfalls:\n        textual_parts.append(f\"\\nSecurity Pitfalls:\\n{security_pitfalls}\")\n    \n    return \"\\n\".join(textual_parts).strip()\n\n\ndef simple_summarize(text, max_length=500, max_sentences=5):\n    \"\"\"\n    Simple text summarization by extracting key sentences.\n    \n    Args:\n        text: Text to summarize\n        max_length: Maximum character length of summary\n        max_sentences: Maximum number of sentences to include\n        \n    Returns:\n        Summarized text\n    \"\"\"\n    if not text or not text.strip():\n        return \"\"\n    \n    # Split into sentences (simple approach: split on period, exclamation, question mark)\n    sentences = re.split(r'[.!?]\\s+', text)\n    sentences = [s.strip() + '.' for s in sentences if s.strip()]\n    \n    # Filter out very short sentences (likely incomplete)\n    sentences = [s for s in sentences if len(s) > 20]\n    \n    if not sentences:\n        # Fallback: return first N characters\n        return text[:max_length] + \"...\" if len(text) > max_length else text\n    \n    # Take first N sentences that fit within max_length\n    summary_parts = []\n    current_length = 0\n    \n    for sentence in sentences[:max_sentences]:\n        if current_length + len(sentence) <= max_length:\n            summary_parts.append(sentence)\n            current_length += len(sentence) + 1  # +1 for space\n        else:\n            break\n    \n    summary = \" \".join(summary_parts)\n    \n    # If summary is still too long, truncate\n    if len(summary) > max_length:\n        summary = summary[:max_length].rsplit(' ', 1)[0] + \"...\"\n    \n    return summary\n\n\ndef summarize_with_llm(text, api_key=None, model=\"gpt-3.5-turbo\", max_tokens=200):\n    \"\"\"\n    Summarize text using an LLM API (OpenAI-compatible).\n    \n    NOTE: This requires an API key and network access.\n    For n8n, you might want to use an HTTP Request node instead.\n    \n    Args:\n        text: Text to summarize\n        api_key: API key for the LLM service\n        model: Model name to use\n        max_tokens: Maximum tokens in summary\n        \n    Returns:\n        Summarized text\n    \"\"\"\n    try:\n        import requests\n        \n        if not api_key:\n            return None  # Fall back to simple summarization\n        \n        # OpenAI-compatible API call\n        url = \"https://api.openai.com/v1/chat/completions\"\n        headers = {\n            \"Authorization\": f\"Bearer {api_key}\",\n            \"Content-Type\": \"application/json\"\n        }\n        data = {\n            \"model\": model,\n            \"messages\": [\n                {\n                    \"role\": \"system\",\n                    \"content\": \"You are a helpful assistant that creates concise summaries of technical blog posts.\"\n                },\n                {\n                    \"role\": \"user\",\n                    \"content\": f\"Summarize the following blog post content in 2-3 sentences:\\n\\n{text}\"\n                }\n            ],\n            \"max_tokens\": max_tokens,\n            \"temperature\": 0.3\n        }\n        \n        response = requests.post(url, json=data, headers=headers, timeout=30)\n        \n        if response.status_code == 200:\n            result = response.json()\n            summary = result.get(\"choices\", [{}])[0].get(\"message\", {}).get(\"content\", \"\")\n            return summary.strip()\n        else:\n            return None  # Fall back to simple summarization\n            \n    except Exception as e:\n        # If LLM summarization fails, fall back to simple method\n        return None\n\n\n# ===== n8n EXECUTION =====\ntry:\n    # Access input items\n    input_items = _input.all()\n    \n    if not input_items or len(input_items) == 0:\n        raise ValueError(\"No input items found\")\n    \n    # Process all items\n    results = []\n    \n    for index, input_item in enumerate(input_items):\n        try:\n            item = input_item.json\n            \n            # Extract post number and index\n            post_number = item.get(\"post_number\", index + 1)  # Use index+1 as fallback if post_number not found\n            \n            # Extract all textual content (excluding code_snippets)\n            textual_content = extract_textual_content(item)\n            \n            # Summarize the textual content\n            # Option 1: Simple summarization (always works)\n            summary = simple_summarize(textual_content, max_length=500, max_sentences=5)\n            \n            # Option 2: LLM-based summarization (uncomment and configure if you have API access)\n            # api_key = item.get(\"openai_api_key\") or os.environ.get(\"OPENAI_API_KEY\")\n            # llm_summary = summarize_with_llm(textual_content, api_key=api_key)\n            # if llm_summary:\n            #     summary = llm_summary\n            \n            # Include summary, code_snippets, and post_number in output\n            results.append({\n                \"json\": {\n                    \"post_number\": post_number,\n                    \"textual_summary\": summary,\n                    \"code_snippets\": item.get(\"code_snippets\", \"\")\n                }\n            })\n            \n        except Exception as item_error:\n            # If processing one item fails, still try to return code_snippets\n            code_snippets = \"\"\n            post_number = index + 1\n            try:\n                if hasattr(input_item, 'json'):\n                    item = input_item.json\n                    code_snippets = item.get(\"code_snippets\", \"\")\n                    post_number = item.get(\"post_number\", index + 1)\n            except:\n                pass\n            \n            results.append({\n                \"json\": {\n                    \"post_number\": post_number,\n                    \"textual_summary\": None,\n                    \"code_snippets\": code_snippets,\n                    \"error\": str(item_error),\n                    \"error_type\": type(item_error).__name__\n                }\n            })\n    \n    # Return list of results (for \"Run Once for All Items\" mode)\n    return results\n    \nexcept Exception as e:\n    import traceback\n    error_trace = traceback.format_exc()\n    \n    # Try to get code_snippets and post_number even if there's an error\n    code_snippets = \"\"\n    post_number = 1\n    try:\n        input_items = _input.all()\n        if input_items and len(input_items) > 0:\n            item = input_items[0].json\n            code_snippets = item.get(\"code_snippets\", \"\")\n            post_number = item.get(\"post_number\", 1)\n    except:\n        pass\n    \n    return [{\n        \"json\": {\n            \"post_number\": post_number,\n            \"textual_summary\": None,\n            \"code_snippets\": code_snippets,\n            \"error\": str(e),\n            \"error_type\": type(e).__name__\n        }\n    }]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        -432
+      ],
+      "id": "cffc9582-cce1-4132-a4ff-d7d83885f621",
+      "name": "Summarize"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the data from the previous node\nconst items = $input.all();\n\n// Process each item and create HTML files\nconst outputItems = items.map((item, index) => {\n  const data = item.json;\n  \n  // Extract the textual summary and code snippets\n  const title = data.textual_summary.split('\\n')[0].replace('Title: ', '');\n  const content = data.textual_summary.split('\\n\\n').slice(1).join('\\n\\n');\n  const codeSnippets = data.code_snippets || '';\n  \n  // Split code snippets by language\n  const codeBlocks = codeSnippets.split('\\n---\\n').filter(block => block.trim());\n  \n  // Generate HTML content\n  let htmlContent = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<meta name=\"description\" content=\"${title}\">\n<title>${title}</title>\n<style>\n/* Blog Post HTML Styles */\n* {\n    box-sizing: border-box;\n}\n\nbody {\n    margin: 0;\n    padding: 0;\n    background: #f5f5f5;\n    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n}\n\n.blog-post {\n    max-width: 900px;\n    margin: 0 auto;\n    padding: 40px 20px;\n    line-height: 1.7;\n    color: #333;\n    background: #fff;\n    box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n}\n\n.post-number {\n    font-size: 14px;\n    color: #666;\n    margin-bottom: 10px;\n    font-weight: 500;\n    text-transform: uppercase;\n    letter-spacing: 0.5px;\n}\n\n.post-title {\n    font-size: 36px;\n    font-weight: 700;\n    color: #1a1a1a;\n    margin: 0 0 30px 0;\n    line-height: 1.3;\n}\n\n.post-content {\n    margin-bottom: 40px;\n}\n\n.post-content p {\n    margin-bottom: 20px;\n    font-size: 17px;\n    color: #444;\n}\n\n.code-snippets {\n    margin-bottom: 40px;\n}\n\n.code-snippets h2 {\n    margin-bottom: 20px;\n    color: #1a1a1a;\n    font-size: 24px;\n}\n\n.code-block-wrapper {\n    margin-bottom: 24px;\n    border-radius: 6px;\n    overflow: hidden;\n    border: 1px solid #e1e4e8;\n    background: #0d1117;\n    box-shadow: 0 2px 8px rgba(0,0,0,0.1);\n}\n\n.code-header {\n    padding: 8px 12px;\n    font-size: 13px;\n    text-transform: uppercase;\n    letter-spacing: 0.08em;\n    color: #c9d1d9;\n    background: #161b22;\n    font-weight: 600;\n}\n\npre {\n    margin: 0;\n    padding: 14px 16px;\n    overflow-x: auto;\n    background: #0d1117;\n    color: #c9d1d9;\n    font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', 'Courier New', monospace;\n    font-size: 13px;\n    line-height: 1.5;\n}\n\npre code {\n    background: transparent;\n    padding: 0;\n    color: inherit;\n    font-size: inherit;\n}\n\n@media (max-width: 768px) {\n    .blog-post {\n        padding: 20px 15px;\n    }\n    .post-title {\n        font-size: 28px;\n    }\n}\n</style>\n</head>\n<body>\n<article class=\"blog-post\">\n  <div class=\"post-number\">Post #${data.post_number}</div>\n  <h1 class=\"post-title\">${title}</h1>\n\n  <div class=\"post-content\">\n    <p>${content}</p>\n  </div>`;\n\n  // Add code snippets section if available\n  if (codeBlocks.length > 0) {\n    htmlContent += `\\n  <div class=\"code-snippets\">\n    <h2>Code Examples</h2>`;\n    \n    codeBlocks.forEach(block => {\n      // Extract language from the first line\n      const lines = block.trim().split('\\n');\n      const language = lines[0].trim();\n      const code = lines.slice(1).join('\\n');\n      \n      htmlContent += `\n    <div class=\"code-block-wrapper\">\n      <div class=\"code-header\">${language}</div>\n      <pre><code class=\"language-${language}\">${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>\n    </div>`;\n    });\n    \n    htmlContent += `\\n  </div>`;\n  }\n\n  htmlContent += `\\n</article>\n</body>\n</html>`;\n  \n  // Create filename\n  const filename = `post-${data.post_number}-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 50)}.html`;\n  \n  // Prepare the binary data for the HTML file\n  const binaryData = {\n    data: Buffer.from(htmlContent, 'utf-8').toString('base64'),\n    mimeType: 'text/html',\n    fileName: filename,\n    fileExtension: 'html'\n  };\n  \n  return {\n    json: {\n      post_number: data.post_number,\n      title: title,\n      filename: filename,\n      file_size_bytes: Buffer.from(htmlContent, 'utf-8').length,\n      success: true\n    },\n    binary: {\n      data: binaryData\n    }\n  };\n});\n\nreturn outputItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        -432
+      ],
+      "id": "83108e8a-b7d9-44d7-9e53-c0630456ec56",
+      "name": "Summary HTML File"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Code Node: Merge Post Number with Generated Image Prompt\n * \n * Mode: Run Once for All Items\n * Language: JavaScript\n * \n * This code merges the post_number from the input with the generated\n * image prompt text from the LLM node output.\n * \n * Input: Should come from the LLM node that generates image prompts\n * Previous node should have: post_number, title, etc.\n * LLM node output: { text: \"generated prompt...\" }\n */\n\n// Get input items\nconst inputItems = $input.all();\n\n// Process all items\nconst results = [];\n\ninputItems.forEach((item, index) => {\n    try {\n        const json = item.json;\n        \n        // Get post_number from input (should be preserved from previous node)\n        // If using LLM node, you may need to pass post_number through\n        // Check if post_number exists in current item or previous node data\n        const postNumber = json.post_number || json.postNumber || (index + 1);\n        \n        // Get the generated prompt text from LLM node\n        // LLM nodes typically output in 'text' field or 'message' field\n        const promptText = json.text || json.message || json.content || json.output || \"\";\n        \n        // Return merged output with post_number and prompt\n        results.push({\n            json: {\n                post_number: postNumber,\n                image_prompt: promptText\n            }\n        });\n        \n    } catch (error) {\n        results.push({\n            json: {\n                post_number: index + 1,\n                image_prompt: null,\n                error: error.message,\n                error_type: error.constructor.name\n            }\n        });\n    }\n});\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        48
+      ],
+      "id": "bc22e744-fd13-46aa-9e6b-3433597344eb",
+      "name": "Parse Prompt"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/generations",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "dall-e-3"
+            },
+            {
+              "name": "prompt",
+              "value": "=={{ $json.request_body_object.prompt }}"
+            },
+            {
+              "name": "n",
+              "value": "={{ 1 }}"
+            },
+            {
+              "name": "size",
+              "value": "1024x1024"
+            },
+            {
+              "name": "quality",
+              "value": "hd"
+            },
+            {
+              "name": "response_format",
+              "value": "url"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        784,
+        -832
+      ],
+      "id": "067f9ef1-152a-4a9b-8cfb-2a1e893ddfec",
+      "name": "Image Generator",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "HJWUjmAY5l2MktJ3",
+          "name": "OpenAi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Code Node: Fix JSON Body for DALL-E 3 Image Generation\n * \n * Mode: Run Once for All Items\n * Language: JavaScript\n * \n * This code properly constructs the JSON body for OpenAI DALL-E 3 API\n * by escaping special characters in the image prompt.\n * \n * Place this node BEFORE your HTTP Request node.\n */\n\nconst inputItems = $input.all();\nconst results = [];\n\ninputItems.forEach((item, index) => {\n    try {\n        const json = item.json;\n        \n        // Get the image prompt\n        const prompt = json.image_prompt || json.text || json.message || \"\";\n        const postNumber = json.post_number || index + 1;\n        \n        if (!prompt) {\n            results.push({\n                json: {\n                    ...json,\n                    error: \"No image prompt found\",\n                    request_body: null\n                }\n            });\n            return;\n        }\n        \n        // Properly construct the JSON body with escaped prompt\n        const requestBody = {\n            model: \"dall-e-3\",\n            prompt: prompt,  // JavaScript will properly escape this when stringified\n            n: 1,\n            size: \"1024x1024\",\n            quality: \"standard\",\n            response_format: \"url\"\n        };\n        \n        // Stringify the entire body - this properly escapes all special characters\n        const requestBodyJson = JSON.stringify(requestBody);\n        \n        // Return the properly formatted JSON string\n        results.push({\n            json: {\n                ...json,\n                request_body_json: requestBodyJson,\n                request_body_object: requestBody,  // Also include as object for reference\n                post_number: postNumber\n            }\n        });\n        \n    } catch (error) {\n        results.push({\n            json: {\n                ...item.json,\n                error: error.message,\n                error_type: error.constructor.name,\n                request_body_json: null\n            }\n        });\n    }\n});\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        48
+      ],
+      "id": "4ef1dc8d-16ef-4735-a211-cba8224e474f",
+      "name": "Structured Prompt"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "\"\"\"\nn8n Code Node: Build JSON Body for DALL-E 3 WITH Rate Limiting\nMode: Run Once for All Items\nLanguage: Python\n\nThis code properly constructs the JSON body and includes rate limiting delays\nto stay within OpenAI's 5 images per minute limit.\n\"\"\"\n\nimport time\nimport json\n\n# Rate limit: 5 images per minute = 12 seconds minimum between requests\n# Add buffer: 15 seconds to be safe and avoid hitting the limit\nDELAY_SECONDS = 15\n\ninput_items = _input.all()\nresults = []\n\nfor index, item in enumerate(input_items):\n    try:\n        json_data = item.json\n        \n        # Get the image prompt\n        prompt = json_data.get(\"image_prompt\") or json_data.get(\"text\") or json_data.get(\"message\", \"\")\n        post_number = json_data.get(\"post_number\", index + 1)\n        \n        if not prompt:\n            results.append({\n                \"json\": {\n                    **json_data,\n                    \"error\": \"No image prompt found\",\n                    \"request_body_json\": None\n                }\n            })\n            continue\n        \n        # Add delay BEFORE processing this item (except for first item)\n        # This ensures we stay within the 5/minute rate limit\n        if index > 0:\n            # Wait 15 seconds before processing this item\n            time.sleep(DELAY_SECONDS)\n        \n        # Properly construct the JSON body\n        request_body = {\n            \"model\": \"dall-e-3\",\n            \"prompt\": prompt,\n            \"n\": 1,\n            \"size\": \"1024x1024\",\n            \"quality\": \"hd\",  # Use HD for better quality\n            \"response_format\": \"url\"\n        }\n        \n        # Stringify the entire body - this properly escapes all special characters\n        request_body_json = json.dumps(request_body)\n        \n        # Return the properly formatted JSON string\n        results.append({\n            \"json\": {\n                **json_data,\n                \"request_body_json\": request_body_json,\n                \"request_body_object\": request_body,\n                \"post_number\": post_number,\n                \"processed_at_index\": index,\n                \"delay_applied\": index > 0\n            }\n        })\n        \n    except Exception as e:\n        results.append({\n            \"json\": {\n                **json_data,\n                \"error\": str(e),\n                \"error_type\": type(e).__name__,\n                \"request_body_json\": None\n            }\n        })\n\nreturn results"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        -816
+      ],
+      "id": "a9f079e9-304a-4dac-9221-2852ef2fdb3b",
+      "name": "Split Prompts"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "prompt": "=={{ $json.image_prompt}}",
+        "options": {
+          "size": "1024x1024"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1280,
+        -832
+      ],
+      "id": "f119ddd6-c4c2-432f-ad6a-46bba97e4955",
+      "name": "Image Generator DALL-E",
+      "credentials": {
+        "openAiApi": {
+          "id": "H5LXr3raFFEHNnlb",
+          "name": "OpenAi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1744,
+        48
+      ],
+      "id": "96ca4a0e-d891-4371-bb81-f0e7ff93b538",
+      "name": "Split"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get data from previous node\nconst title = $input.item.json.title || \"Sample Title\";\nconst steps = $input.item.json.solution_steps || \"Step 1. First step. Step 2. Second step. Step 3. Third step.\";\n\n// Extract header text (5-8 words, ALL CAPS)\nfunction extractHeader(title) {\n  return title\n    .replace(/[^a-zA-Z0-9\\s]/g, '')\n    .split(' ')\n    .filter(w => w.length > 2)\n    .slice(0, 6)\n    .join(' ')\n    .toUpperCase();\n}\n\n// Extract 3 bullet points\nfunction extractBullets(steps) {\n  const sentences = steps\n    .split(/[.!?]/)\n    .filter(s => s.trim().length > 10)\n    .map(s => s.trim());\n  \n  const bullets = [];\n  for (let i = 0; i < Math.min(3, sentences.length); i++) {\n    const words = sentences[i].split(' ').slice(0, 8).join(' ');\n    bullets.push(words);\n  }\n  \n  // Fill remaining bullets if needed\n  while (bullets.length < 3) {\n    bullets.push(`Step ${bullets.length + 1}: Action item here`);\n  }\n  \n  return bullets;\n}\n\nconst headerText = extractHeader(title);\nconst bullets = extractBullets(steps);\n\n// Generate complete HTML with inline CSS\nconst html = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    * {\n      margin: 0;\n      padding: 0;\n      box-sizing: border-box;\n    }\n    \n    body {\n      width: 1024px;\n      height: 1024px;\n      background-color: #004d4d;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      font-family: Arial, Helvetica, sans-serif;\n    }\n    \n    .slide-container {\n      width: 800px;\n      height: 500px;\n      background: linear-gradient(to bottom, #008080 0%, #005555 100%);\n      border: 4px solid #00b3b3;\n      border-radius: 8px;\n      overflow: hidden;\n      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);\n    }\n    \n    .header {\n      width: 100%;\n      height: 120px;\n      background-color: #008888;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 20px 40px;\n    }\n    \n    .header-text {\n      color: #FFFFFF;\n      font-size: 42px;\n      font-weight: bold;\n      text-align: center;\n      line-height: 1.2;\n      text-transform: uppercase;\n    }\n    \n    .body {\n      padding: 40px 60px;\n    }\n    \n    .bullet {\n      color: #FFFFFF;\n      font-size: 28px;\n      margin-bottom: 35px;\n      display: flex;\n      align-items: flex-start;\n      line-height: 1.4;\n    }\n    \n    .bullet-point {\n      color: #00FFFF;\n      font-size: 40px;\n      margin-right: 20px;\n      flex-shrink: 0;\n      line-height: 1;\n    }\n    \n    .bullet-text {\n      flex: 1;\n      padding-top: 4px;\n    }\n  </style>\n</head>\n<body>\n  <div class=\"slide-container\">\n    <div class=\"header\">\n      <div class=\"header-text\">${headerText}</div>\n    </div>\n    <div class=\"body\">\n      <div class=\"bullet\">\n        <span class=\"bullet-point\">•</span>\n        <span class=\"bullet-text\">${bullets[0]}</span>\n      </div>\n      <div class=\"bullet\">\n        <span class=\"bullet-point\">•</span>\n        <span class=\"bullet-text\">${bullets[1]}</span>\n      </div>\n      <div class=\"bullet\">\n        <span class=\"bullet-point\">•</span>\n        <span class=\"bullet-text\">${bullets[2]}</span>\n      </div>\n    </div>\n  </div>\n</body>\n</html>`;\n\n// Return the HTML\nreturn {\n  json: {\n    html: html,\n    header: headerText,\n    bullets: bullets,\n    post_number: $input.item.json.post_number || 1,\n    title: title\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1952,
+        144
+      ],
+      "id": "8d670e4a-0a5a-4880-8404-2d7c1f539fa7",
+      "name": "Generate HTML"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get data from previous node\nconst html = $input.item.json.html;\nconst postNumber = $input.item.json.post_number || 1;\nconst filename = `slide-${postNumber}.html`;\n\n// Create a viewer page with download button\nconst viewerHTML = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <title>HTML Preview - ${filename}</title>\n  <style>\n    * { margin: 0; padding: 0; box-sizing: border-box; }\n    body { \n      font-family: Arial, sans-serif; \n      background: #f5f5f5;\n      padding: 20px;\n    }\n    .controls {\n      background: white;\n      padding: 20px;\n      border-radius: 8px;\n      box-shadow: 0 2px 10px rgba(0,0,0,0.1);\n      margin-bottom: 20px;\n      display: flex;\n      gap: 10px;\n      align-items: center;\n    }\n    .btn {\n      padding: 12px 24px;\n      border: none;\n      border-radius: 6px;\n      font-size: 14px;\n      font-weight: bold;\n      cursor: pointer;\n      transition: all 0.3s;\n    }\n    .btn-download {\n      background: #00b3b3;\n      color: white;\n    }\n    .btn-download:hover {\n      background: #008888;\n    }\n    .btn-view {\n      background: #6c757d;\n      color: white;\n    }\n    .btn-view:hover {\n      background: #545b62;\n    }\n    .filename {\n      flex: 1;\n      font-weight: bold;\n      color: #333;\n    }\n    .preview {\n      background: white;\n      border-radius: 8px;\n      box-shadow: 0 2px 10px rgba(0,0,0,0.1);\n      overflow: hidden;\n    }\n    iframe {\n      width: 100%;\n      height: calc(100vh - 150px);\n      border: none;\n    }\n  </style>\n</head>\n<body>\n  <div class=\"controls\">\n    <span class=\"filename\">📄 ${filename}</span>\n    <button class=\"btn btn-download\" onclick=\"downloadHTML()\">⬇️ Download HTML</button>\n    <button class=\"btn btn-view\" onclick=\"openInNewTab()\">🔗 Open in New Tab</button>\n  </div>\n  \n  <div class=\"preview\">\n    <iframe id=\"preview\" srcdoc=\"${html.replace(/\"/g, '&quot;')}\"></iframe>\n  </div>\n\n  <script>\n    const htmlContent = \\`${html.replace(/`/g, '\\\\`').replace(/\\$/g, '\\\\$')}\\`;\n    \n    function downloadHTML() {\n      const blob = new Blob([htmlContent], { type: 'text/html' });\n      const url = URL.createObjectURL(blob);\n      const a = document.createElement('a');\n      a.href = url;\n      a.download = '${filename}';\n      document.body.appendChild(a);\n      a.click();\n      document.body.removeChild(a);\n      URL.revokeObjectURL(url);\n    }\n    \n    function openInNewTab() {\n      const newWindow = window.open();\n      newWindow.document.write(htmlContent);\n      newWindow.document.close();\n    }\n  </script>\n</body>\n</html>`;\n\n// Create simple data URLs\nconst originalDataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;\nconst viewerDataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(viewerHTML)}`;\n\n// Convert to binary for storage\nconst originalBuffer = Buffer.from(html, 'utf-8');\nconst viewerBuffer = Buffer.from(viewerHTML, 'utf-8');\n\nreturn {\n  json: {\n    // File information\n    filename: filename,\n    viewerFilename: `viewer-${filename}`,\n    \n    // Direct URLs\n    directUrl: originalDataUrl,\n    viewerUrl: viewerDataUrl,\n    \n    // HTML content\n    originalHtml: html,\n    viewerHtml: viewerHTML,\n    \n    // File sizes\n    originalSize: Buffer.byteLength(html, 'utf8'),\n    viewerSize: Buffer.byteLength(viewerHTML, 'utf8'),\n    \n    // Action links (for email/display)\n    downloadLink: `<a href=\"${originalDataUrl}\" download=\"${filename}\">Download ${filename}</a>`,\n    viewLink: `<a href=\"${viewerDataUrl}\" target=\"_blank\">View & Download</a>`,\n    \n    // Instructions\n    instructions: {\n      viewInBrowser: \"Copy the 'viewerUrl' and paste in browser address bar\",\n      downloadOriginal: \"Copy the 'directUrl' and paste in browser to download\",\n      useInWorkflow: \"Use 'binary.original' or 'binary.viewer' for uploads\"\n    }\n  },\n  binary: {\n    // Original HTML file\n    original: {\n      data: originalBuffer,\n      fileName: filename,\n      mimeType: 'text/html'\n    },\n    // Viewer HTML file (with download button)\n    viewer: {\n      data: viewerBuffer,\n      fileName: `viewer-${filename}`,\n      mimeType: 'text/html'\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        -832
+      ],
+      "id": "69cb57df-6dec-4850-bb43-73a2e9352e0d",
+      "name": "Create Image"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Code Node: Create Image (WORKS ALWAYS VERSION)\n * \n * Mode: Run Once for Each Item\n * Language: JavaScript\n * \n * This version opens the original HTML in a new window that can be saved with Ctrl+S\n * This method works in ALL browsers, even with file:// protocol restrictions.\n */\n\n// Get data from previous node\nconst html = $input.item.json.html;\nconst postNumber = $input.item.json.post_number || 1;\nconst filename = `slide-${postNumber}.html`;\n\nif (!html) {\n    return {\n        json: {\n            error: \"No HTML content found\",\n            post_number: postNumber\n        }\n    };\n}\n\n// Create base64 encoded data URL\nconst base64Html = Buffer.from(html, 'utf-8').toString('base64');\nconst dataUrl = `data:text/html;charset=utf-8;base64,${base64Html}`;\n\n// Create viewer page that opens original in new window (ALWAYS WORKS)\nconst viewerHTML = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Download ${filename}</title>\n  <style>\n    * { margin: 0; padding: 0; box-sizing: border-box; }\n    body { \n      font-family: Arial, sans-serif; \n      background: #f5f5f5;\n      padding: 20px;\n    }\n    .container {\n      max-width: 800px;\n      margin: 0 auto;\n    }\n    .header {\n      background: white;\n      padding: 30px;\n      border-radius: 8px;\n      box-shadow: 0 2px 10px rgba(0,0,0,0.1);\n      margin-bottom: 20px;\n      text-align: center;\n    }\n    .header h1 {\n      color: #333;\n      margin-bottom: 10px;\n    }\n    .download-section {\n      background: white;\n      padding: 30px;\n      border-radius: 8px;\n      box-shadow: 0 2px 10px rgba(0,0,0,0.1);\n      margin-bottom: 20px;\n      text-align: center;\n    }\n    .download-btn {\n      display: inline-block;\n      padding: 20px 40px;\n      background: #28a745;\n      color: white;\n      text-decoration: none;\n      border-radius: 8px;\n      font-size: 20px;\n      font-weight: bold;\n      margin: 10px;\n      cursor: pointer;\n      border: none;\n      transition: background 0.3s;\n    }\n    .download-btn:hover {\n      background: #218838;\n    }\n    .download-btn:active {\n      background: #1e7e34;\n    }\n    .instructions {\n      background: #fff3cd;\n      border: 2px solid #ffc107;\n      border-radius: 8px;\n      padding: 20px;\n      margin-top: 20px;\n      text-align: left;\n    }\n    .instructions h3 {\n      color: #856404;\n      margin-bottom: 15px;\n      font-size: 18px;\n    }\n    .instructions ol {\n      margin-left: 25px;\n      color: #856404;\n    }\n    .instructions li {\n      margin-bottom: 10px;\n      line-height: 1.6;\n    }\n    .instructions strong {\n      color: #856404;\n    }\n    .preview-section {\n      background: white;\n      padding: 20px;\n      border-radius: 8px;\n      box-shadow: 0 2px 10px rgba(0,0,0,0.1);\n      margin-bottom: 20px;\n    }\n    .preview-section h2 {\n      margin-bottom: 15px;\n      color: #333;\n    }\n    .preview-container {\n      border: 2px solid #ddd;\n      border-radius: 4px;\n      overflow: hidden;\n    }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>📄 ${filename}</h1>\n      <p>Ready to download your HTML slide</p>\n    </div>\n    \n    <div class=\"download-section\">\n      <h2>⬇️ Download Your File</h2>\n      <button class=\"download-btn\" onclick=\"openAndDownload()\" id=\"downloadBtn\">\n        🔽 OPEN FILE TO DOWNLOAD\n      </button>\n      \n      <div class=\"instructions\">\n        <h3>📋 How to Download (Choose Any Method):</h3>\n        <ol>\n          <li><strong>Method 1 (Easiest):</strong> Click the green button above → A new window opens → Press <strong>Ctrl+S</strong> (or <strong>Cmd+S</strong> on Mac) → Save the file</li>\n          <li><strong>Method 2:</strong> Right-click the green button → \"Open Link in New Tab\" → Press <strong>Ctrl+S</strong> to save</li>\n          <li><strong>Method 3:</strong> Scroll down → Right-click the preview → \"Save As\" → Save the file</li>\n          <li><strong>Method 4:</strong> Press <strong>Ctrl+S</strong> on this page → Save as HTML → Open saved file and extract the preview section</li>\n        </ol>\n        <p style=\"margin-top: 15px; font-weight: bold; color: #856404;\">\n          💡 <strong>Tip:</strong> Method 1 is the easiest - just click the button, then press Ctrl+S in the new window!\n        </p>\n      </div>\n    </div>\n    \n    <div class=\"preview-section\">\n      <h2>📋 Preview</h2>\n      <div class=\"preview-container\">\n        <div id=\"preview\">\n          ${html}\n        </div>\n      </div>\n    </div>\n  </div>\n  \n  <script>\n    // Store HTML content\n    const htmlContent = ${JSON.stringify(html)};\n    const fileName = '${filename}';\n    const dataUrl = '${dataUrl}';\n    \n    // Function to open original HTML in new window (ALWAYS WORKS)\n    function openAndDownload() {\n      try {\n        console.log('Opening file in new window...');\n        \n        // Open the original HTML in a new window\n        const newWindow = window.open('', '_blank');\n        \n        if (newWindow) {\n          // Write the HTML content to the new window\n          newWindow.document.write(htmlContent);\n          newWindow.document.close();\n          \n          // Focus the new window\n          newWindow.focus();\n          \n          // Show instructions\n          setTimeout(function() {\n            alert('File opened in new window!\\\\n\\\\nNow press Ctrl+S (or Cmd+S on Mac) to save the file.\\\\n\\\\nThe file will be saved as: ' + fileName);\n          }, 500);\n          \n          console.log('File opened successfully. User can now press Ctrl+S to save.');\n        } else {\n          // Popup blocked - show alternative\n          alert('Popup blocked!\\\\n\\\\nPlease allow popups for this page, or use one of these methods:\\\\n\\\\n1. Right-click the green button → \"Open Link in New Tab\"\\\\n2. Copy this URL and paste in browser: ' + dataUrl.substring(0, 100) + '...\\\\n3. Right-click the preview below → \"Save As\"');\n          \n          // Try to open data URL directly\n          window.location.href = dataUrl;\n        }\n      } catch (error) {\n        console.error('Error opening file:', error);\n        alert('Error opening file. Please try:\\\\n\\\\n1. Right-click the preview below → \"Save As\"\\\\n2. Or copy this URL: ' + dataUrl.substring(0, 100) + '...');\n      }\n    }\n    \n    // Also make the button work with right-click\n    document.getElementById('downloadBtn').addEventListener('contextmenu', function(e) {\n      e.preventDefault();\n      window.open(dataUrl, '_blank');\n      alert('File opened in new tab! Press Ctrl+S to save.');\n    });\n    \n    // Add keyboard shortcut (Ctrl+D or Cmd+D)\n    document.addEventListener('keydown', function(e) {\n      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {\n        e.preventDefault();\n        openAndDownload();\n      }\n    });\n    \n    console.log('Download page ready. File: ' + fileName);\n    console.log('Click the green button, then press Ctrl+S in the new window to save.');\n  </script>\n</body>\n</html>`;\n\n// Convert to buffers for binary output\nconst originalBuffer = Buffer.from(html, 'utf-8');\nconst viewerBuffer = Buffer.from(viewerHTML, 'utf-8');\n\n// Create data URLs\nconst originalDataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;\nconst viewerDataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(viewerHTML)}`;\n\nreturn {\n  json: {\n    filename: filename,\n    viewerFilename: `viewer-${filename}`,\n    directUrl: originalDataUrl,\n    viewerUrl: viewerDataUrl,\n    base64DataUrl: dataUrl,\n    originalSize: Buffer.byteLength(html, 'utf8'),\n    viewerSize: Buffer.byteLength(viewerHTML, 'utf8'),\n    post_number: postNumber,\n    instructions: {\n      step1: \"Click the green 'OPEN FILE TO DOWNLOAD' button\",\n      step2: \"A new window will open with your HTML slide\",\n      step3: \"Press Ctrl+S (or Cmd+S on Mac) in the new window\",\n      step4: \"Save the file with the name you want\",\n      alternative: \"Or right-click the preview → Save As\"\n    }\n  },\n  binary: {\n    original: {\n      data: originalBuffer,\n      fileName: filename,\n      mimeType: 'text/html'\n    },\n    viewer: {\n      data: viewerBuffer,\n      fileName: `viewer-${filename}`,\n      mimeType: 'text/html'\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        416
+      ],
+      "id": "ab6d390a-69ba-4434-921e-596e3a60d750",
+      "name": "Create Image1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Questions Fetching",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Blockchain Questions Fetching",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Blockchain Questions Fetching": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "AI Questions Fetching": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Flatten Array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten Array": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Count Questions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Questions by Threshold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Questions": {
+      "main": [
+        []
+      ]
+    },
+    "Filter Questions by Threshold": {
+      "main": [
+        [
+          {
+            "node": "Count Filtered Questions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Display Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Display Questions": {
+      "main": [
+        [
+          {
+            "node": "Parse Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Questions": {
+      "main": [
+        [
+          {
+            "node": "Content Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT 4.1 mini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Content Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content Generator": {
+      "main": [
+        [
+          {
+            "node": "Parse Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Content": {
+      "main": [
+        [
+          {
+            "node": "Fetch Post Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Post Content": {
+      "main": [
+        [
+          {
+            "node": "Extract Content Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Content Data": {
+      "main": [
+        [
+          {
+            "node": "Clean Post Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Post Content": {
+      "main": [
+        [
+          {
+            "node": "Clean Code Snippets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Code Snippets": {
+      "main": [
+        [
+          {
+            "node": "Clean Code Snippets 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Code Snippets 2": {
+      "main": [
+        [
+          {
+            "node": "Prompt Generator",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post -> HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT 4.1 mini1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Prompt Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post -> HTML": {
+      "main": [
+        [
+          {
+            "node": "HTML Wrap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML Wrap": {
+      "main": [
+        [
+          {
+            "node": "HTML File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML File": {
+      "main": [
+        []
+      ]
+    },
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Summary HTML File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt Generator": {
+      "main": [
+        [
+          {
+            "node": "Parse Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Prompt": {
+      "main": [
+        [
+          {
+            "node": "Structured Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Prompt": {
+      "main": [
+        [
+          {
+            "node": "Split",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Prompts": {
+      "main": [
+        []
+      ]
+    },
+    "Split": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Generate HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate HTML": {
+      "main": [
+        [
+          {
+            "node": "Create Image1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b875bbb1-cd11-4d55-955d-27414965e603",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "151305d708accaf9ba7df3ae300984e7c14a108b131ed2d081a3bd48f670f5c4"
+  },
+  "id": "vK6yG1vzH7szY0DP",
+  "tags": []
+}
