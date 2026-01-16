@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Control Panel</title>
+    <link rel="stylesheet" href="admin_styles.css">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>🔧 Admin Control Panel</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" id="refreshBtn">Refresh</button>
+                <button class="btn btn-secondary" id="settingsBtn">Settings</button>
+            </div>
+        </header>
+        
+        <nav class="admin-nav">
+            <ul class="nav-tabs">
+                <li class="active"><a href="#dashboard">Dashboard</a></li>
+                <li><a href="#syncs">Active Syncs</a></li>
+                <li><a href="#repositories">Repositories</a></li>
+                <li><a href="#logs">Logs</a></li>
+                <li><a href="#users">Users</a></li>
+            </ul>
+        </nav>
+        
+        <main class="admin-content">
+            <section id="dashboard" class="content-section active">
+                <h2>System Dashboard</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Syncs</h3>
+                        <p class="stat-value" id="totalSyncs">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Active Now</h3>
+                        <p class="stat-value" id="activeSyncs">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Success Rate</h3>
+                        <p class="stat-value" id="successRate">0%</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Files Synced</h3>
+                        <p class="stat-value" id="filesSynced">0</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="syncs" class="content-section">
+                <h2>Active Synchronizations</h2>
+                <div class="sync-list" id="syncList">
+                    <p class="empty-state">No active syncs</p>
+                </div>
+            </section>
+            
+            <section id="repositories" class="content-section">
+                <h2>Repository Management</h2>
+                <div class="repo-grid" id="repoGrid">
+                    <p class="empty-state">No repositories configured</p>
+                </div>
+            </section>
+            
+            <section id="logs" class="content-section">
+                <h2>System Logs</h2>
+                <div class="log-viewer" id="logViewer">
+                    <pre class="log-content">Loading logs...</pre>
+                </div>
+            </section>
+            
+            <section id="users" class="content-section">
+                <h2>User Management</h2>
+                <div class="user-list" id="userList">
+                    <p class="empty-state">No users found</p>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="sync_orchestrator.js"></script>
+    <script>
+        function updateDashboard() {
+            document.getElementById('totalSyncs').textContent = '1,456';
+            document.getElementById('activeSyncs').textContent = '3';
+            document.getElementById('successRate').textContent = '99.2%';
+            document.getElementById('filesSynced').textContent = '8,234';
+        }
+        setInterval(updateDashboard, 5000);
+        updateDashboard();
+    </script>
+</body>
+</html>
+
