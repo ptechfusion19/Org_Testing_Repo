@@ -1,0 +1,50 @@
+name: Send Issue to n8n Webhook
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  send-to-n8n:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Send Issue Data to n8n
+        env:
+          N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
+        run: |
+          curl -X POST "$N8N_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "action": "opened",
+              "issue": {
+                "number": ${{ github.event.issue.number }},
+                "title": "${{ github.event.issue.title }}",
+                "body": ${{ toJSON(github.event.issue.body) }},
+                "html_url": "${{ github.event.issue.html_url }}",
+                "state": "${{ github.event.issue.state }}",
+                "user": {
+                  "login": "${{ github.event.issue.user.login }}"
+                },
+                "assignee": ${{ toJSON(github.event.issue.assignee) }},
+                "assignees": ${{ toJSON(github.event.issue.assignees) }},
+                "labels": ${{ toJSON(github.event.issue.labels) }},
+                "created_at": "${{ github.event.issue.created_at }}"
+              },
+              "repository": {
+                "name": "${{ github.event.repository.name }}",
+                "full_name": "${{ github.event.repository.full_name }}",
+                "owner": {
+                  "login": "${{ github.event.repository.owner.login }}"
+                },
+                "html_url": "${{ github.event.repository.html_url }}",
+                "description": "${{ github.event.repository.description }}"
+              },
+              "sender": {
+                "login": "${{ github.event.sender.login }}"
+              }
+            }'
+      
+      - name: Check Response
+        if: always()
+        run: echo "Issue data sent to n8n webhook"
